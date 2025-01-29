@@ -14,5 +14,4 @@ def fix_offset(real_file):
     filename = os.path.basename(real_file)
     new_filename = os.path.join(directory, f"offset_fixed_samefile{filename}")
     real_data.to_csv(new_filename, index=False)
-
-fix_offset(real_file)
+    return new_filename

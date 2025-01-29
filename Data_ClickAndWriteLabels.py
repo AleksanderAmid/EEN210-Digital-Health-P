@@ -19,98 +19,99 @@ GYRO_LSB_PER_DPS = 131.0
 G_MS2 = 9.81
 SAMPLE_RATE = 66.5
 
-# Skapa en tidsaxel i sekunder
-time = np.arange(len(df)) / SAMPLE_RATE
+def axis_fix(df):
+    # Skapa en tidsaxel i sekunder
+    time = np.arange(len(df)) / SAMPLE_RATE
 
-# 2. Konvertera accelerationsdata till m/s^2
-acc_x_ms2 = (df['acceleration_x'] / ACC_LSB_PER_G) * G_MS2
-acc_y_ms2 = (df['acceleration_y'] / ACC_LSB_PER_G) * G_MS2
-acc_z_ms2 = (df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
+    # 2. Konvertera accelerationsdata till m/s^2
+    acc_x_ms2 = (df['acceleration_x'] / ACC_LSB_PER_G) * G_MS2
+    acc_y_ms2 = (df['acceleration_y'] / ACC_LSB_PER_G) * G_MS2
+    acc_z_ms2 = (df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
 
-# 3. Konvertera gyroskopdata till grader/s
-gyro_x_dps = df['gyroscope_x'] / GYRO_LSB_PER_DPS
-gyro_y_dps = df['gyroscope_y'] / GYRO_LSB_PER_DPS
-gyro_z_dps = df['gyroscope_z'] / GYRO_LSB_PER_DPS
+    # 3. Konvertera gyroskopdata till grader/s
+    gyro_x_dps = df['gyroscope_x'] / GYRO_LSB_PER_DPS
+    gyro_y_dps = df['gyroscope_y'] / GYRO_LSB_PER_DPS
+    gyro_z_dps = df['gyroscope_z'] / GYRO_LSB_PER_DPS
 
-# 4. Applicera Savitzky-Golay-filter
-window_length = 11
-poly_order = 2
+    # 4. Applicera Savitzky-Golay-filter
+    window_length = 11
+    poly_order = 2
 
-acc_x_filt = savgol_filter(acc_x_ms2, window_length, poly_order)
-acc_y_filt = savgol_filter(acc_y_ms2, window_length, poly_order)
-acc_z_filt = savgol_filter(acc_z_ms2, window_length, poly_order)
+    acc_x_filt = savgol_filter(acc_x_ms2, window_length, poly_order)
+    acc_y_filt = savgol_filter(acc_y_ms2, window_length, poly_order)
+    acc_z_filt = savgol_filter(acc_z_ms2, window_length, poly_order)
 
-gyro_x_filt = savgol_filter(gyro_x_dps, window_length, poly_order)
-gyro_y_filt = savgol_filter(gyro_y_dps, window_length, poly_order)
-gyro_z_filt = savgol_filter(gyro_z_dps, window_length, poly_order)
+    gyro_x_filt = savgol_filter(gyro_x_dps, window_length, poly_order)
+    gyro_y_filt = savgol_filter(gyro_y_dps, window_length, poly_order)
+    gyro_z_filt = savgol_filter(gyro_z_dps, window_length, poly_order)
 
-# 5. Integrera gyroskopdata -> vinkel (grader)
-angle_x = np.cumsum(gyro_x_filt) / SAMPLE_RATE
-angle_y = np.cumsum(gyro_y_filt) / SAMPLE_RATE
-angle_z = np.cumsum(gyro_z_filt) / SAMPLE_RATE
+    # 5. Integrera gyroskopdata -> vinkel (grader)
+    angle_x = np.cumsum(gyro_x_filt) / SAMPLE_RATE
+    angle_y = np.cumsum(gyro_y_filt) / SAMPLE_RATE
+    angle_z = np.cumsum(gyro_z_filt) / SAMPLE_RATE
 
-# 6. Dubbelintegrera accelerationsdata -> avstånd (meter)
-vel_x = np.cumsum(acc_x_filt) / SAMPLE_RATE
-vel_y = np.cumsum(acc_y_filt) / SAMPLE_RATE
-vel_z = np.cumsum(acc_z_filt) / SAMPLE_RATE
+    # 6. Dubbelintegrera accelerationsdata -> avstånd (meter)
+    vel_x = np.cumsum(acc_x_filt) / SAMPLE_RATE
+    vel_y = np.cumsum(acc_y_filt) / SAMPLE_RATE
+    vel_z = np.cumsum(acc_z_filt) / SAMPLE_RATE
 
-dist_x = np.cumsum(vel_x) / SAMPLE_RATE
-dist_y = np.cumsum(vel_y) / SAMPLE_RATE
-dist_z = np.cumsum(vel_z) / SAMPLE_RATE
+    dist_x = np.cumsum(vel_x) / SAMPLE_RATE
+    dist_y = np.cumsum(vel_y) / SAMPLE_RATE
+    dist_z = np.cumsum(vel_z) / SAMPLE_RATE
 
-# ---------------------------- #
-# Sektion för interaktiv labeling
-# ---------------------------- #
+    # ---------------------------- #
+    # Sektion för interaktiv labeling
+    # ---------------------------- #
 
-fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(10, 10))
 
-# Skapa subplots
-ax1 = fig.add_subplot(4, 1, 1)
-ax2 = fig.add_subplot(4, 1, 2)
-ax3 = fig.add_subplot(4, 1, 3)
-ax4 = fig.add_subplot(4, 1, 4)
+    # Skapa subplots
+    ax1 = fig.add_subplot(4, 1, 1)
+    ax2 = fig.add_subplot(4, 1, 2)
+    ax3 = fig.add_subplot(4, 1, 3)
+    ax4 = fig.add_subplot(4, 1, 4)
 
-# 1) Filtered acceleration
-ax1.plot(time, acc_x_filt, label='Acc X (filt)')
-ax1.plot(time, acc_y_filt, label='Acc Y (filt)')
-ax1.plot(time, acc_z_filt, label='Acc Z (filt)')
-ax1.set_title('Filtrerad Accelerationsdata (m/s^2)')
-ax1.set_xlabel('Tid (s)')
-ax1.set_ylabel('Acceleration')
-ax1.legend()
-ax1.grid(True)
+    # 1) Filtered acceleration
+    ax1.plot(time, acc_x_filt, label='Acc X (filt)')
+    ax1.plot(time, acc_y_filt, label='Acc Y (filt)')
+    ax1.plot(time, acc_z_filt, label='Acc Z (filt)')
+    ax1.set_title('Filtrerad Accelerationsdata (m/s^2)')
+    ax1.set_xlabel('Tid (s)')
+    ax1.set_ylabel('Acceleration')
+    ax1.legend()
+    ax1.grid(True)
 
-# 2) Filtered gyroscope
-ax2.plot(time, gyro_x_filt, label='Gyro X (filt)')
-ax2.plot(time, gyro_y_filt, label='Gyro Y (filt)')
-ax2.plot(time, gyro_z_filt, label='Gyro Z (filt)')
-ax2.set_title('Filtrerad Gyroskopdata (°/s)')
-ax2.set_xlabel('Tid (s)')
-ax2.set_ylabel('Vinkelhastighet')
-ax2.legend()
-ax2.grid(True)
+    # 2) Filtered gyroscope
+    ax2.plot(time, gyro_x_filt, label='Gyro X (filt)')
+    ax2.plot(time, gyro_y_filt, label='Gyro Y (filt)')
+    ax2.plot(time, gyro_z_filt, label='Gyro Z (filt)')
+    ax2.set_title('Filtrerad Gyroskopdata (°/s)')
+    ax2.set_xlabel('Tid (s)')
+    ax2.set_ylabel('Vinkelhastighet')
+    ax2.legend()
+    ax2.grid(True)
 
-# 3) Integrated gyro angles
-ax3.plot(time, angle_x, label='Gyro X (deg)')
-ax3.plot(time, angle_y, label='Gyro Y (deg)')
-ax3.plot(time, angle_z, label='Gyro Z (deg)')
-ax3.set_title('Integrerad Gyroskopdata (grader)')
-ax3.set_xlabel('Tid (s)')
-ax3.set_ylabel('Vinkel (°)')
-ax3.legend()
-ax3.grid(True)
+    # 3) Integrated gyro angles
+    ax3.plot(time, angle_x, label='Gyro X (deg)')
+    ax3.plot(time, angle_y, label='Gyro Y (deg)')
+    ax3.plot(time, angle_z, label='Gyro Z (deg)')
+    ax3.set_title('Integrerad Gyroskopdata (grader)')
+    ax3.set_xlabel('Tid (s)')
+    ax3.set_ylabel('Vinkel (°)')
+    ax3.legend()
+    ax3.grid(True)
 
-# 4) Double-integrated acceleration (distance)
-ax4.plot(time, dist_x, label='Dist X (m)')
-ax4.plot(time, dist_y, label='Dist Y (m)')
-ax4.plot(time, dist_z, label='Dist Z (m)')
-ax4.set_title('Dubbelintegrerad Accelerationsdata (meter)')
-ax4.set_xlabel('Tid (s)')
-ax4.set_ylabel('Avstånd (m)')
-ax4.legend()
-ax4.grid(True)
+    # 4) Double-integrated acceleration (distance)
+    ax4.plot(time, dist_x, label='Dist X (m)')
+    ax4.plot(time, dist_y, label='Dist Y (m)')
+    ax4.plot(time, dist_z, label='Dist Z (m)')
+    ax4.set_title('Dubbelintegrerad Accelerationsdata (meter)')
+    ax4.set_xlabel('Tid (s)')
+    ax4.set_ylabel('Avstånd (m)')
+    ax4.legend()
+    ax4.grid(True)
 
-plt.tight_layout()
+    plt.tight_layout()
 
 # Variabler för att hantera selection
 current_min = None
