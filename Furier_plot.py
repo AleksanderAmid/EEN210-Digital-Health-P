@@ -15,7 +15,7 @@ def compute_fft(signal, fs):
         spectrum (1D-array): FFT-amplitud för respektive frekvens.
     """
     N = len(signal)
-    
+    #hej aleks
     # Beräkna FFT
     X = np.fft.fft(signal)
     freqs = np.fft.fftfreq(N, d=1/fs)  # d=1/fs => samplingsperiod
