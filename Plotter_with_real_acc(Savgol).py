@@ -2,66 +2,73 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
-# Filväg till din CSV-fil
-file_path = 'stairs_down_data_20250127_141140.csv'
+# File path to your CSV file
+file_path = "fall_data_20250127_01.csv"
 
-# 1. Läs in data
+# Load the data
 df = pd.read_csv(file_path)
 
-# 2. Konstanter för omvandling (MPU6050-liknande, ±2g och ±250°/s)
-ACC_LSB_PER_G = 16384.0    # MPU6050 ±2g
-GYRO_LSB_PER_DPS = 131.0   # MPU6050 ±250°/s
-G_MS2 = 9.81               # 1 g ≈ 9.81 m/s^2
+# Convert all columns to numeric, forcing errors to NaN and dropping non-numeric columns
+df = df.apply(pd.to_numeric, errors="coerce").dropna(axis=1, how="all")
 
-# 3. Omvandla accelerationsvärden till m/s^2
-acc_x_ms2 = (df['acceleration_x'] / ACC_LSB_PER_G) * G_MS2
-acc_y_ms2 = (df['acceleration_y'] / ACC_LSB_PER_G) * G_MS2
-acc_z_ms2 = (df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
+# Constants for MPU6050 sensor calibration
+ACC_LSB_PER_G = 16384.0  # MPU6050 ±2g
+GYRO_LSB_PER_DPS = 131.0  # MPU6050 ±250°/s
+G_MS2 = 9.81  # 1 g ≈ 9.81 m/s^2
 
-# 4. Omvandla gyrovärden till grader/sekund
-gyro_x_dps = df['gyroscope_x'] / GYRO_LSB_PER_DPS
-gyro_y_dps = df['gyroscope_y'] / GYRO_LSB_PER_DPS
-gyro_z_dps = df['gyroscope_z'] / GYRO_LSB_PER_DPS
-#hejhej
-# 5. Skapa en x-axel (index 0 till antal rader - 1)
+# Remove initial offsets (subtract the first value in each column)
+df_corrected = df - df.iloc[0]
+
+# Convert acceleration values to m/s²
+acc_x_ms2 = (df_corrected["acceleration_x"] / ACC_LSB_PER_G) * G_MS2
+acc_y_ms2 = (df_corrected["acceleration_y"] / ACC_LSB_PER_G) * G_MS2
+acc_z_ms2 = (df_corrected["acceleration_z"] / ACC_LSB_PER_G) * G_MS2
+
+# Convert gyroscope values to degrees per second
+gyro_x_dps = df_corrected["gyroscope_x"] / GYRO_LSB_PER_DPS
+gyro_y_dps = df_corrected["gyroscope_y"] / GYRO_LSB_PER_DPS
+gyro_z_dps = df_corrected["gyroscope_z"] / GYRO_LSB_PER_DPS
+
+# Create an x-axis (index 0 to number of rows - 1)
 x = range(len(df))
 
-# 6. Parametrar för Savitzky-Golay (måste vara udda window_length)
-window_length = 20
-poly_order = 3
+# Ensure window_length is valid for Savitzky-Golay filtering
+window_length = min(20, len(df)) if len(df) > 2 else len(df) - 1  # Must be odd
+if window_length % 2 == 0:
+    window_length += 1  # Ensure it's odd
+poly_order = min(3, window_length - 1)  # Ensure polynomial order is valid
 
-# 7. Filtrera accelerationsdata (i m/s^2)
-acc_x_filt = savgol_filter(acc_x_ms2, window_length, poly_order)
-acc_y_filt = savgol_filter(acc_y_ms2, window_length, poly_order)
-acc_z_filt = savgol_filter(acc_z_ms2, window_length, poly_order)
+# Apply Savitzky-Golay filtering
+acc_x_filt = savgol_filter(acc_x_ms2, window_length, poly_order) if len(df) > window_length else acc_x_ms2
+acc_y_filt = savgol_filter(acc_y_ms2, window_length, poly_order) if len(df) > window_length else acc_y_ms2
+acc_z_filt = savgol_filter(acc_z_ms2, window_length, poly_order) if len(df) > window_length else acc_z_ms2
 
-# 8. Filtrera gyroskopdata (i °/s)
-gyro_x_filt = savgol_filter(gyro_x_dps, window_length, poly_order)
-gyro_y_filt = savgol_filter(gyro_y_dps, window_length, poly_order)
-gyro_z_filt = savgol_filter(gyro_z_dps, window_length, poly_order)
+gyro_x_filt = savgol_filter(gyro_x_dps, window_length, poly_order) if len(df) > window_length else gyro_x_dps
+gyro_y_filt = savgol_filter(gyro_y_dps, window_length, poly_order) if len(df) > window_length else gyro_y_dps
+gyro_z_filt = savgol_filter(gyro_z_dps, window_length, poly_order) if len(df) > window_length else gyro_z_dps
 
-# 9. Plotting
+# Plotting
 plt.figure(figsize=(10, 6))
 
-# Subplot 1: Accelerationsdata (m/s^2, filtrerad)
+# Subplot 1: Filtered Acceleration Data (m/s²)
 plt.subplot(2, 1, 1)
-plt.plot(x, acc_x_filt, label='Acc X (m/s^2, filt)')
-plt.plot(x, acc_y_filt, label='Acc Y (m/s^2, filt)')
-plt.plot(x, acc_z_filt, label='Acc Z (m/s^2, filt)')
-plt.title('Filtrerad Accelerationsdata (m/s^2) - Savitzky-Golay')
-plt.xlabel('Provdatalängd (index)')
-plt.ylabel('Acceleration (m/s^2)')
+plt.plot(x, acc_x_filt, label="Acc X (m/s², filt)")
+plt.plot(x, acc_y_filt, label="Acc Y (m/s², filt)")
+plt.plot(x, acc_z_filt, label="Acc Z (m/s², filt)")
+plt.title("Filtered Acceleration Data (m/s²) - Offset Removed & Savitzky-Golay")
+plt.xlabel("Sample Index")
+plt.ylabel("Acceleration (m/s²)")
 plt.legend()
 plt.grid(True)
 
-# Subplot 2: Gyroskopdata (°/s, filtrerad)
+# Subplot 2: Filtered Gyroscope Data (°/s)
 plt.subplot(2, 1, 2)
-plt.plot(x, gyro_x_filt, label='Gyro X (°/s, filt)')
-plt.plot(x, gyro_y_filt, label='Gyro Y (°/s, filt)')
-plt.plot(x, gyro_z_filt, label='Gyro Z (°/s, filt)')
-plt.title('Filtrerad Gyroskopdata (°/s) - Savitzky-Golay')
-plt.xlabel('Provdatalängd (index)')
-plt.ylabel('Vinkelhastighet (°/s)')
+plt.plot(x, gyro_x_filt, label="Gyro X (°/s, filt)")
+plt.plot(x, gyro_y_filt, label="Gyro Y (°/s, filt)")
+plt.plot(x, gyro_z_filt, label="Gyro Z (°/s, filt)")
+plt.title("Filtered Gyroscope Data (°/s) - Offset Removed & Savitzky-Golay")
+plt.xlabel("Sample Index")
+plt.ylabel("Angular Velocity (°/s)")
 plt.legend()
 plt.grid(True)
 
