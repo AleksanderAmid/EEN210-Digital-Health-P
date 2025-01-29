@@ -38,7 +38,7 @@ def compute_fft(signal, fs):
 # =================================================================
 
 # 1. Läs in data
-file_path = 'fall_data_20250127_01.csv'
+file_path = 'stairs_down_data_20250127_141140.csv'
 df = pd.read_csv(file_path)
 
 # 2. Ange eller uppskatta din samplingsfrekvens (Hz).
