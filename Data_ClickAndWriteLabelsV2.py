@@ -148,3 +148,5 @@ button = Button(ax_button, 'Spara')
 button.on_clicked(save_data)
 
 plt.show()
+
+
