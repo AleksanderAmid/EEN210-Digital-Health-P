@@ -22,7 +22,7 @@ acc_z_ms2 = (df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
 gyro_x_dps = df['gyroscope_x'] / GYRO_LSB_PER_DPS
 gyro_y_dps = df['gyroscope_y'] / GYRO_LSB_PER_DPS
 gyro_z_dps = df['gyroscope_z'] / GYRO_LSB_PER_DPS
-
+#
 # 5. Skapa en x-axel (index 0 till antal rader - 1)
 x = range(len(df))
 
