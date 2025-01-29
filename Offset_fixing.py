@@ -3,7 +3,8 @@ import pandas as pd
 
 # Define file paths
 still_file = r'data2\still_data_20250129_102942.csv'
-real_file = r'data2\fall_zipperUp_data_20250129_110818.csv'
+real_file = r'data2\gait_squat_data_20250129_103839.csv'
+
 
 def apply_offset(still_file, real_file):
     still_data = pd.read_csv(still_file)
@@ -13,7 +14,7 @@ def apply_offset(still_file, real_file):
     offset_means = still_data[sensor_columns].mean()
     
     real_data = pd.read_csv(real_file)
-    real_data[sensor_columns] = real_data[sensor_columns] - offset_means
+    real_data[sensor_columns] = real_data[sensor_columns] - abs(offset_means)
     
     directory = os.path.dirname(real_file)
     filename = os.path.basename(real_file)

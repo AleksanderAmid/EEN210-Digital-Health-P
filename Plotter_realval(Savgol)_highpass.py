@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter, butter, filtfilt
 
-file_path = 'data2\offset_fixed_fall_zipperUp_data_20250129_110818.csv'
+file_path = 'data3\gait_sit_squat_jump_fall_data_20250129_114859.csv'
 df = pd.read_csv(file_path)
 
 ACC_LSB_PER_G = 16384.0
