@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-real_file = r'data3\gait_sit_squat_jump_fall_data_20250129_114859.csv'
+real_file = r'data3\gait_sit_squat_jump_fall__obstacle_data_20250129_115458.csv'
 
 
 def fix_offset(real_file):
