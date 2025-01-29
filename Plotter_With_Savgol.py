@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 #
 # Filväg till din CSV-fil
-file_path = 'fall_data_20250127_01.csv'
+file_path = 'data3\offset_fixed_samefilegait_sit_squat_jump_fall_data_20250129_114859.csv'
 
 # Läs in data
 df = pd.read_csv(file_path)
