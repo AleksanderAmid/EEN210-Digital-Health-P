@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
 # Filväg till din CSV-fil
-file_path = 'interpolated_stairs_down_data.csv'
+file_path = 'fall_data_20250127_01.csv'
 
 # 1. Läs in data
 df = pd.read_csv(file_path)
@@ -27,7 +27,7 @@ gyro_z_dps = df['gyroscope_z'] / GYRO_LSB_PER_DPS
 x = range(len(df))
 
 # 6. Parametrar för Savitzky-Golay (måste vara udda window_length)
-window_length = 10
+window_length = 11
 poly_order = 2
 
 # 7. Filtrera accelerationsdata (i m/s^2)
