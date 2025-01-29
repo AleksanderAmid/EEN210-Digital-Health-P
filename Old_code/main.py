@@ -1,4 +1,4 @@
-from Offset_fixing_samefile import fix_offset
+from Old_code.Offset_fixing_samefile import fix_offset
 from Data_ClickAndWriteLabelsV2 import axel_fix, save_data, make_onselect, spanselector
 import pandas as pd
 import numpy as np

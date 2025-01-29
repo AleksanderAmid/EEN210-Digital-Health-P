@@ -69,6 +69,7 @@ def process_file(file_path: str):
 
     # 6) Plotta
     fig, (ax_acc, ax_gyro) = plt.subplots(2, 1, figsize=(10, 8))
+    fig.canvas.manager.set_window_title(file_path)
 
     ax_acc.plot(time, acc_x_filt, label='Acc X (filt)')
     ax_acc.plot(time, acc_y_filt, label='Acc Y (filt)')
@@ -138,7 +139,7 @@ def process_file(file_path: str):
 
         plt.close(fig)  # Stäng figuren för att fortsätta i koden
 
-    # Knappar
+    # Knappar för "Ready to Label" och "Flytta till Papperskorg"
     ax_button_offset = plt.axes([0.68, 0.01, 0.3, 0.05])
     button_offset = Button(ax_button_offset, 'Ready to Label')
     button_offset.on_clicked(on_ready_to_label)
@@ -151,64 +152,49 @@ def process_file(file_path: str):
 
 def main():
     """
-    Huvudfunktion som låter användaren välja antingen en fil eller en mapp
-    (båda dialogerna startar i skriptets arbetskatalog).
-    - Om fil: Bearbetar bara den.
-    - Om ingen fil valts -> be om mapp.
-    - Om mapp: Bearbetar alla .csv-filer i mappen i tur och ordning.
+    Huvudfunktion där användaren via en messagebox väljer:
+      - Ja (enskild fil)
+      - Nej (mapp med flera CSV-filer)
     """
     root = tk.Tk()
     root.withdraw()
 
-    # Fil-dialog för att välja FIL (med initialdir i samma mapp som programmet körs)
-    path = fd.askopenfilename(
-        title="Välj EN fil (eller Avbryt för att välja en mapp istället)",
-        filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
-        initialdir=os.getcwd()
+    choice = messagebox.askquestion(
+        "Välj källa",
+        "Ja=Enskild fil, Nej=Mapp med filer"
     )
 
-    if not path:
-        # Ingen fil valdes, fråga då om mapp istället
+    if choice == 'yes':
+        # Användare valde enskild fil
+        path = fd.askopenfilename(
+            title="Välj EN CSV-fil",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
+            initialdir=os.getcwd()
+        )
+        if path and os.path.isfile(path):
+            process_file(path)
+        else:
+            messagebox.showwarning("Varning", "Ingen giltig fil vald.")
+    else:
+        # Användare valde mapp
         folder_path = fd.askdirectory(
             title="Välj en mapp med CSV-filer",
             initialdir=os.getcwd()
         )
-        if folder_path:
-            if os.path.isdir(folder_path):
-                # Hämta alla csv-filer i mappen
-                all_files = [os.path.join(folder_path, f)
-                             for f in os.listdir(folder_path)
-                             if f.lower().endswith(".csv")]
-                all_files.sort()
-
-                if not all_files:
-                    messagebox.showwarning(
-                        "Inga CSV-filer",
-                        "Ingen CSV-fil hittades i mappen."
-                    )
-                else:
-                    for csv_file in all_files:
-                        process_file(csv_file)
+        if folder_path and os.path.isdir(folder_path):
+            all_files = [
+                os.path.join(folder_path, f)
+                for f in os.listdir(folder_path)
+                if f.lower().endswith(".csv")
+            ]
+            all_files.sort()
+            if not all_files:
+                messagebox.showwarning("Inga CSV-filer", "Ingen CSV-fil hittades i mappen.")
             else:
-                messagebox.showerror(
-                    "Fel",
-                    "Mappen existerar inte eller är ogiltig."
-                )
+                for csv_file in all_files:
+                    process_file(csv_file)
         else:
-            # Användare avbröt helt
-            messagebox.showwarning(
-                "Avbrutet",
-                "Varken fil eller mapp valdes."
-            )
-    else:
-        # Användaren valde en fil
-        if os.path.isfile(path):
-            process_file(path)
-        else:
-            messagebox.showerror(
-                "Fel",
-                "Vald sökväg är ingen fil."
-            )
+            messagebox.showwarning("Avbrutet", "Ingen giltig mapp vald.")
 
     sys.exit(0)
 
