@@ -18,7 +18,7 @@ def apply_offset(still_file, real_file):
     
     directory = os.path.dirname(real_file)
     filename = os.path.basename(real_file)
-    new_filename = os.path.join(directory, f"offset_fixed_{filename}")
+    new_filename = os.path.join(directory, f"offset_fixed_stilldata{filename}")
     real_data.to_csv(new_filename, index=False)
 
 apply_offset(still_file, real_file)
