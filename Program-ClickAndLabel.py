@@ -11,7 +11,7 @@ from matplotlib.widgets import SpanSelector, Button
 # ---------------------------------------------------------- #
 
 # 1. Läs in data
-file_path = r'readyToLabel2\offset_fixed_samefilegait_sit_squat_jump_fall__obstacle_data_20250129_115458.csv'
+file_path = r'readyToLabel2\offset_fixed_samefilegait_sit_squat_jump_fall_data_20250129_115216.csv'
 df = pd.read_csv(file_path)
 
 ACC_LSB_PER_G = 16384.0
