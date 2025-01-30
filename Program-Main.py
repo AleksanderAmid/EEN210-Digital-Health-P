@@ -15,6 +15,9 @@ READY TO LABEL:
 FURIER PLOT:
 - Zooming and panning is now possible in the plot. (The menu is located in the bottom right corner of the plot)
 
+PROGRAM ANIMATOR:
+- The program is now in alpha 1. (Only walking and jumping is possible to animate)
+
 PLOTTER (FIXED OFFSET):
 -
 
@@ -23,23 +26,27 @@ PLOTTER (RAW):
 
 """
 def open_click_and_label():
-    Popen(['python', 'Program-ClickAndLabelV3.py'])
+    Popen(['python', 'ProgramFiles\Program-ClickAndLabelV3.py'])
     root.destroy()
 
 def open_ready_to_label():
-    Popen(['python', 'Program-ReadyToLabelV17.py'])
+    Popen(['python', 'ProgramFiles\Program-ReadyToLabelV17.py'])
     root.destroy()
 
 def open_furier_plot():
-    Popen(['python', 'Program-FurierPlot.py'])
+    Popen(['python', 'ProgramFiles\Program-FurierPlot.py'])
     root.destroy()
 
 def open_plotter_fixed_offset():
-    Popen(['python', 'Program-Plotter(Fixed Offset).py'])
+    Popen(['python', 'ProgramFiles\Program-Plotter(Fixed Offset).py'])
     root.destroy()
 
 def open_plotter_raw():
-    Popen(['python', 'Program-Plotter(RAW).py'])
+    Popen(['python', 'ProgramFiles\Program-Plotter(RAW).py'])
+    root.destroy()
+
+def open_program_animator():
+    Popen(['python', r'ProgramFiles\Program-Animator.py'])
     root.destroy()
 
 def exit_app():
@@ -66,7 +73,18 @@ btn_plotter_fixed_offset.pack(pady=10)
 btn_plotter_raw = tk.Button(root, text="Plotter (RAW)", command=open_plotter_raw, width=20)
 btn_plotter_raw.pack(pady=10)
 
+btn_program_animator = tk.Button(
+    root, 
+    text="Label Tester (In Alpha - Only Supports -> Labels 0(N),1(G),4(J)))", 
+    command=open_program_animator, 
+    width=20, 
+    wraplength=150, 
+    justify='center'
+)
+btn_program_animator.pack(pady=10)
+
 btn_exit = tk.Button(root, text="Exit", command=exit_app, width=20)
 btn_exit.pack(pady=10)
+
 
 root.mainloop()
