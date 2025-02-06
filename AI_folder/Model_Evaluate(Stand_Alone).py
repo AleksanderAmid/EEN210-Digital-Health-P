@@ -90,7 +90,7 @@ def plot_confusion_matrix(cm, class_names):
 
 def check_overfitting(history):
     """
-    so vi testar att Funktionen beräknar skillnaden mellan träningsnoggrannheten och valideringsnoggrannheten
+    so vi testar attFunktionen beräknar skillnaden mellan träningsnoggrannheten och valideringsnoggrannheten
     Enkel heuristik för att kolla överanpassning genom att jämföra slutlig tränings- 
     och valideringsnoggrannhet.
     """

@@ -41,7 +41,6 @@
   <!-- Include Chart.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
   <h1>Real-time Fall Detection Data</h1>
   
@@ -172,19 +171,28 @@
       // Parse the incoming JSON data
       var data = JSON.parse(event.data);
 
-      // Update the label list colors:
-      // Loop through all label list items and set to red,
-      // then set the active label (data.label) to green.
-      for (var i = 0; i < labelListItems.length; i++) {
-        if (i === parseInt(data.label)) {
-          labelListItems[i].classList.add("active-label");
-        } else {
-          labelListItems[i].classList.remove("active-label");
+      // Update the label list only if the label is a valid number.
+      var predictedLabel = parseInt(data.label);
+      if (!isNaN(predictedLabel)) {
+        // Loop through all label list items and set to red,
+        // then set the active label (predictedLabel) to green.
+        for (var i = 0; i < labelListItems.length; i++) {
+          if (i === predictedLabel) {
+            labelListItems[i].classList.add("active-label");
+          } else {
+            labelListItems[i].classList.remove("active-label");
+          }
         }
+      } else {
+        // If prediction is not ready, remove any active-label highlighting.
+        labelListItems.forEach(function(item) {
+          item.classList.remove("active-label");
+        });
       }
 
       // Create a new message element and display the data
       var message = document.createElement('li');
+      message.className = "message";
       message.innerHTML = "<div><strong>Timestamp:</strong> " + data.timestamp + "</div>" +
                           "<div><strong>Acceleration:</strong> (" + data.acceleration_x + ", " + data.acceleration_y + ", " + data.acceleration_z + ")</div>" +
                           "<div><strong>Gyroscope:</strong> (" + data.gyroscope_x + ", " + data.gyroscope_y + ", " + data.gyroscope_z + ")</div>" +
@@ -192,8 +200,7 @@
       messagesDiv.appendChild(message);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
-      // Update the chart with new data
-      // Use the timestamp as the new label
+      // Update the chart with new data using the timestamp as the label
       sensorChart.data.labels.push(data.timestamp);
       sensorChart.data.datasets[0].data.push(data.acceleration_x);
       sensorChart.data.datasets[1].data.push(data.acceleration_y);

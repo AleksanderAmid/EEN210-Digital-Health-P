@@ -2,14 +2,13 @@ import os
 import json
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 import uvicorn
-import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
+from fastapi import WebSocketDisconnect
 from starlette.middleware.cors import CORSMiddleware
-
-# For model loading and prediction
 from tensorflow.keras.models import load_model as keras_load_model
 
 app = FastAPI()
@@ -22,7 +21,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load the HTML page (for demonstration)
 with open("./src/index.html", "r") as f:
     html = f.read()
 
@@ -39,6 +37,7 @@ class DataProcessor:
     def save_to_csv(self):
         df = pd.DataFrame.from_dict(self.data_buffer)
         self.data_buffer = []
+        # Append the new row to the existing DataFrame
         df.to_csv(
             self.file_path,
             index=False,
@@ -51,29 +50,57 @@ class DataProcessor:
 data_processor = DataProcessor()
 
 
-# Global variable to store live sensor data for prediction.
-# The model was trained on sequences (windows) of size 20 and 6 features.
-live_data_buffer = []
-WINDOW_SIZE = 20  # Must match the training window size
-
 def load_model():
     """
-    Loads the trained Keras model from file.
-    Make sure the path is correct.
+    Load the saved Keras model from the .h5 file.
     """
-    model = keras_load_model("fall_detection_model.h5")
+    try:
+        model = keras_load_model('fall_detection_model.h5')
+        print("Model loaded successfully.")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        model = None
     return model
 
 
-def predict_label(model, data):
+def predict_label(model, _data):
     """
-    Receives a NumPy array 'data' of shape (1, window_size, 6)
-    and returns the predicted label.
+    Predict the label using the provided model.
+    
+    This function waits until at least 20 sensor samples have been accumulated in the data buffer.
+    It then extracts the sensor values from the last 20 entries, forms a sequence, and runs the prediction.
     """
-    # Get the prediction probabilities.
-    prediction = model.predict(data)
-    # Choose the label with the highest probability.
-    label = int(np.argmax(prediction, axis=1)[0])
+    # Define the sensor keys as used during training.
+    sensor_keys = [
+        'acceleration_x', 'acceleration_y', 'acceleration_z',
+        'gyroscope_x', 'gyroscope_y', 'gyroscope_z'
+    ]
+    window_size = 20  # Must match the training window_size
+
+    # Check if there are enough samples to form a sequence.
+    if len(data_processor.data_buffer) < window_size:
+        # Not enough data yet to form a complete sequence.
+        return None
+
+    # Extract the last `window_size` sensor samples from the data buffer.
+    window = data_processor.data_buffer[-window_size:]
+    sequence = []
+    for entry in window:
+        try:
+            sensor_values = [float(entry[key]) for key in sensor_keys]
+            sequence.append(sensor_values)
+        except KeyError:
+            # In case some keys are missing, skip prediction.
+            print("Missing sensor keys in data entry; skipping prediction.")
+            return None
+
+    # Convert to NumPy array and add the batch dimension.
+    sequence = np.array(sequence)  # shape: (20, 6)
+    sequence = np.expand_dims(sequence, axis=0)  # shape: (1, 20, 6)
+
+    # Run prediction
+    predictions = model.predict(sequence)
+    label = int(np.argmax(predictions, axis=1)[0])
     return label
 
 
@@ -87,7 +114,7 @@ class WebSocketManager:
         print("WebSocket connected")
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.discard(websocket)
+        self.active_connections.remove(websocket)
         print("WebSocket disconnected")
 
     async def broadcast_message(self, message: str):
@@ -95,13 +122,12 @@ class WebSocketManager:
             try:
                 await connection.send_text(message)
             except WebSocketDisconnect:
+                # Handle disconnect if needed
                 self.disconnect(connection)
 
 
 websocket_manager = WebSocketManager()
-# Load the model once at startup.
 model = load_model()
-print("Model loaded for live prediction.")
 
 
 @app.get("/")
@@ -115,57 +141,26 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # For debugging/logging
-            print("Received data:", data)
-            
-            # Parse the incoming JSON data.
             json_data = json.loads(data)
 
-            # Extract sensor data.
-            # Ensure that your keys match those sent by your embedded device.
-            # Here, we assume the JSON includes the following keys:
-            # "acceleration_x", "acceleration_y", "acceleration_z",
-            # "gyroscope_x", "gyroscope_y", "gyroscope_z"
-            sensor_values = [
-                json_data.get("acceleration_x", 0),
-                json_data.get("acceleration_y", 0),
-                json_data.get("acceleration_z", 0),
-                json_data.get("gyroscope_x", 0),
-                json_data.get("gyroscope_y", 0),
-                json_data.get("gyroscope_z", 0)
-            ]
-            
-            # Append the sensor values to the live buffer.
-            live_data_buffer.append(sensor_values)
-            
-            # If the buffer is larger than the desired window size, keep only the most recent WINDOW_SIZE samples.
-            if len(live_data_buffer) > WINDOW_SIZE:
-                live_data_buffer.pop(0)
-            
-            # If we have enough data, perform prediction.
-            if len(live_data_buffer) == WINDOW_SIZE:
-                # Convert buffer to numpy array with shape (1, WINDOW_SIZE, 6)
-                window_array = np.array(live_data_buffer, dtype=np.float32)
-                window_array = window_array.reshape((1, WINDOW_SIZE, 6))
-                # Get predicted label from the model.
-                label = predict_label(model, window_array)
-            else:
-                # If not enough data, set a default label (e.g., 0 for "no event" or -1 for "insufficient data")
-                label = -1
-
-            # Add a timestamp to the data.
+            # Add time stamp to the received data.
             json_data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            json_data["label"] = label
 
-            # Optionally, add the data to the CSV buffer and save periodically.
+            # Add incoming data to our buffer.
             data_processor.add_data(json_data)
+            # Optionally save to CSV every 100 samples.
             if len(data_processor.data_buffer) >= 100:
                 data_processor.save_to_csv()
 
-            # Print the data for debugging.
-            print("Broadcasting data:", json_data)
-            
-            # Broadcast the updated data to all connected clients.
+            # Run prediction using the current data buffer.
+            label = predict_label(model, json_data)
+            # If not enough data, you may choose to keep the label empty or set a default.
+            json_data["label"] = label if label is not None else "pending"
+
+            # Print the last data to the terminal.
+            print(json_data)
+
+            # Broadcast the data (with label) to connected clients.
             await websocket_manager.broadcast_message(json.dumps(json_data))
 
     except WebSocketDisconnect:
