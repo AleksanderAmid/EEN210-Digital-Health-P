@@ -75,18 +75,22 @@ def plot_training_history(history):
 
 def plot_confusion_matrix(cm, class_names):
     """
-    Plottar en konfusionsmatris med hjälp av seaborn.
+    Plottar en konfusionsmatris med hjälp av seaborn i procent.
     """
+    # Konvertera till procent baserat på antalet sanna värden per klass (rader)
+    cm_percentage = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis] * 100, decimals=2)
+    
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+    sns.heatmap(cm_percentage, annot=True, fmt='.2f', cmap='Blues',
                 xticklabels=class_names, yticklabels=class_names)
     plt.xlabel('Förutsagda värden')
     plt.ylabel('Sanna värden')
-    plt.title('Konfusionsmatris')
+    plt.title('Konfusionsmatris (%)')
     plt.show()
 
 def check_overfitting(history):
     """
+    so vi testar att Funktionen beräknar skillnaden mellan träningsnoggrannheten och valideringsnoggrannheten
     Enkel heuristik för att kolla överanpassning genom att jämföra slutlig tränings- 
     och valideringsnoggrannhet.
     """

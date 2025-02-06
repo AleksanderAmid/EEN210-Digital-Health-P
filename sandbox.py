@@ -1,2 +1,5 @@
 import tensorflow as tf
-print("Fysiska enheter (GPUs):", tf.config.list_physical_devices('GPU'))
+import numba as nb
+from numba import cuda
+
+print(nb.config.NUMBA_NUM_THREADS)

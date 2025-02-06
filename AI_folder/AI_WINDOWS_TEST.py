@@ -1,16 +1,14 @@
-# train_model.py
 import pandas as pd
 import tkinter as tk
 import numpy as np
-import numba as nb
-from numba import njit
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout
 from tensorflow.keras.utils import to_categorical
-import json  # Used for saving the training history
-
+import matplotlib.pyplot as plt
+import json
+import os
 
 class ModelTrainer:
     def __init__(self, csv_path, window_size=20):
@@ -30,7 +28,6 @@ class ModelTrainer:
         df[self.sensor_cols] = scaler.fit_transform(df[self.sensor_cols])
         return df
     
-    @njit
     def create_sequences(self, df):
         X, y = [], []
         data = df[self.sensor_cols].values
@@ -42,7 +39,7 @@ class ModelTrainer:
         X = np.array(X)
         y = np.array(y)
         return X, y
-    @njit
+
     def build_model(self, num_classes):
         model = Sequential()
         model.add(LSTM(64, input_shape=(self.window_size, len(self.sensor_cols)), return_sequences=True))
@@ -52,7 +49,7 @@ class ModelTrainer:
         model.add(Dense(num_classes, activation='softmax'))
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
         return model
-    @njit
+    
     def train(self, epochs=20, batch_size=32):
         df = self.load_and_preprocess_data()
         X, y = self.create_sequences(df)
@@ -62,28 +59,71 @@ class ModelTrainer:
         X_train, X_test, y_train, y_test = train_test_split(X, y_cat, test_size=0.2, random_state=42)
         
         model = self.build_model(num_classes)
-        history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_test, y_test))
-        model.save('fall_detection_model.h5')
+        history = model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_test, y_test), verbose=0)
         
-        # Save the training history to a JSON file.
+        # Spara (om du vill) modellen och historiken
+        model.save('fall_detection_model.h5')
         with open("training_history.json", "w") as f:
             json.dump(history.history, f)
         
         return model, history
+
+def compare_window_sizes(csv_path, window_sizes=[10,20,30,40,50], epochs=5, batch_size=32):
+    """
+    Tränar modellen med ett antal olika window_sizes och samma (låg) antal epoker
+    för att snabbt se vilket fönster som verkar fungera bäst. Returnerar en
+    dictionary med (window_size -> history).
+    """
+    results = {}
     
-# run the script
+    for w in window_sizes:
+        print(f"\nTränar med window_size = {w}")
+        trainer = ModelTrainer(csv_path, window_size=w)
+        _, history = trainer.train(epochs=epochs, batch_size=batch_size)
+        # Spara historia i en dictionary
+        results[w] = history.history  # => t.ex. {'loss': [...], 'accuracy': [...], 'val_loss': [...], 'val_accuracy': [...]}
+        
+        # Om du vill behålla modellerna (tillfälligt) för varje window_size kan du spara dem 
+        # under olika filnamn. Ex.:
+        # model.save(f"model_w{w}.h5")
+
+    return results
+
+def plot_comparison(results):
+    """
+    Tar in en dictionary {window_size: history} och plottar val_accuracy för att
+    jämföra hur olika window_sizes presterar över 5 epoch.
+    """
+    plt.figure(figsize=(10, 5))
+    
+    for w, hist in results.items():
+        val_acc = hist['val_accuracy']
+        plt.plot(range(1, len(val_acc)+1), val_acc, label=f'window={w}')
+    
+    plt.title("Jämförelse av window_sizes - val_accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Valideringsnoggrannhet")
+    plt.legend()
+    plt.show()
+
 if __name__ == "__main__":
+    # En enkel main som:
+    # 1) ber dig välja en CSV-fil
+    # 2) kör compare_window_sizes
+    # 3) plottar resultat
+    
     import tkinter.filedialog
     root = tk.Tk()
     root.withdraw()  # Hide the main window
+    
     file_path = tkinter.filedialog.askopenfilename(
         title="Select CSV file",
         filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
     )
     if file_path:
-        trainer = ModelTrainer(file_path, window_size=20)
-        model, history = trainer.train(epochs=40, batch_size=32)
-        print("Model training complete.")
-        print("Training history saved to 'training_history.json'.")
+        # Bestäm vilka window sizes du vill testa och hur många epoch du vill köra (ex. 5).
+        sizes_to_try = [10, 20, 30, 40, 50]
+        results_dict = compare_window_sizes(file_path, window_sizes=sizes_to_try, epochs=5, batch_size=32)
+        plot_comparison(results_dict)
     else:
         print("No file selected. Exiting.")
