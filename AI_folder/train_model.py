@@ -1,5 +1,6 @@
 # train_model.py
 import pandas as pd
+import tkinter as tk
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -66,3 +67,20 @@ class ModelTrainer:
             json.dump(history.history, f)
         
         return model, history
+    
+# run the script
+if __name__ == "__main__":
+    import tkinter.filedialog
+    root = tk.Tk()
+    root.withdraw()  # Hide the main window
+    file_path = tkinter.filedialog.askopenfilename(
+        title="Select CSV file",
+        filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+    )
+    if file_path:
+        trainer = ModelTrainer(file_path, window_size=20)
+        model, history = trainer.train(epochs=20, batch_size=32)
+        print("Model training complete.")
+        print("Training history saved to 'training_history.json'.")
+    else:
+        print("No file selected. Exiting.")
