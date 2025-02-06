@@ -10,6 +10,16 @@ from tensorflow.keras.layers import Dense, LSTM, Dropout
 from tensorflow.keras.utils import to_categorical
 import json  # Used for saving the training history
 
+# Force TensorFlow to use the GPU
+physical_devices = tf.config.list_physical_devices('GPU')
+if physical_devices:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    print("✅ GPU is being used:", physical_devices[0])
+    with tf.device('/GPU:0'):
+        print("🚀 Running training on GPU.")
+else:
+    print("❌ No GPU detected, running on CPU.")
+
 class ModelTrainer:
     def __init__(self, csv_path, window_size=20):
         self.csv_path = csv_path
@@ -80,7 +90,7 @@ if __name__ == "__main__":
     )
     if file_path:
         trainer = ModelTrainer(file_path, window_size=20)
-        model, history = trainer.train(epochs=40, batch_size=32)
+        model, history = trainer.train(epochs=40, batch_size=2048*3)
         print("Model training complete.")
         print("Training history saved to 'training_history.json'.")
     else:
