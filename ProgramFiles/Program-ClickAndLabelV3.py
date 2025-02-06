@@ -8,53 +8,54 @@ from tkinter import messagebox, simpledialog
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.signal import savgol_filter
 from matplotlib.widgets import SpanSelector, Button
 
 ACC_LSB_PER_G = 16384.0
 GYRO_LSB_PER_DPS = 131.0
 G_MS2 = 9.81
 SAMPLE_RATE = 66.5
-WINDOW_LENGTH = 11
-POLY_ORDER = 2
 
 def process_file(file_path: str):
     df = pd.read_csv(file_path)
     time = np.arange(len(df)) / SAMPLE_RATE
-    acc_x_ms2 = (df['acceleration_x'] / ACC_LSB_PER_G) * G_MS2
-    acc_y_ms2 = (df['acceleration_y'] / ACC_LSB_PER_G) * G_MS2
-    acc_z_ms2 = (df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
-    acc_x_filt = savgol_filter(acc_x_ms2, WINDOW_LENGTH, POLY_ORDER)
-    acc_y_filt = savgol_filter(acc_y_ms2, WINDOW_LENGTH, POLY_ORDER)
-    acc_z_filt = savgol_filter(acc_z_ms2, WINDOW_LENGTH, POLY_ORDER)
-    gyro_x_dps = df['gyroscope_x'] / GYRO_LSB_PER_DPS
-    gyro_y_dps = df['gyroscope_y'] / GYRO_LSB_PER_DPS
-    gyro_z_dps = df['gyroscope_z'] / GYRO_LSB_PER_DPS
-    gyro_x_filt = savgol_filter(gyro_x_dps, WINDOW_LENGTH, POLY_ORDER)
-    gyro_y_filt = savgol_filter(gyro_y_dps, WINDOW_LENGTH, POLY_ORDER)
-    gyro_z_filt = savgol_filter(gyro_z_dps, WINDOW_LENGTH, POLY_ORDER)
 
+    # Omvandla accelerationsdata till m/s^2 (ej filtrerade)
+    acc_x = (df['acceleration_x'] / ACC_LSB_PER_G) * G_MS2
+    acc_y = (df['acceleration_y'] / ACC_LSB_PER_G) * G_MS2
+    acc_z = (df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
+
+    # Omvandla gyroskopdata till grader per sekund (ej filtrerade)
+    gyro_x = df['gyroscope_x'] / GYRO_LSB_PER_DPS
+    gyro_y = df['gyroscope_y'] / GYRO_LSB_PER_DPS
+    gyro_z = df['gyroscope_z'] / GYRO_LSB_PER_DPS
+
+    # Skapa figur och axlar för plotting
     fig, (ax_acc, ax_gyro) = plt.subplots(2, 1, figsize=(10, 8))
     fig.canvas.manager.set_window_title(file_path)
-    ax_acc.plot(time, acc_x_filt, label='Acc X (filt)')
-    ax_acc.plot(time, acc_y_filt, label='Acc Y (filt)')
-    ax_acc.plot(time, acc_z_filt, label='Acc Z (filt)')
-    ax_acc.set_title('Filtrerad Accelerationsdata (m/s^2)')
+
+    # Plotta accelerationsdata
+    ax_acc.plot(time, acc_x, label='Acc X')
+    ax_acc.plot(time, acc_y, label='Acc Y')
+    ax_acc.plot(time, acc_z, label='Acc Z')
+    ax_acc.set_title('Accelerationsdata (m/s^2)')
     ax_acc.set_xlabel('Tid (s)')
     ax_acc.set_ylabel('Acceleration')
     ax_acc.legend()
     ax_acc.grid(True)
 
-    ax_gyro.plot(time, gyro_x_filt, label='Gyro X (filt)')
-    ax_gyro.plot(time, gyro_y_filt, label='Gyro Y (filt)')
-    ax_gyro.plot(time, gyro_z_filt, label='Gyro Z (filt)')
-    ax_gyro.set_title('Filtrerad Gyroskopdata (°/s)')
+    # Plotta gyroskopdata
+    ax_gyro.plot(time, gyro_x, label='Gyro X')
+    ax_gyro.plot(time, gyro_y, label='Gyro Y')
+    ax_gyro.plot(time, gyro_z, label='Gyro Z')
+    ax_gyro.set_title('Gyroskopdata (°/s)')
     ax_gyro.set_xlabel('Tid (s)')
     ax_gyro.set_ylabel('Vinkelhastighet')
     ax_gyro.legend()
     ax_gyro.grid(True)
+
     plt.tight_layout()
 
+    # Funktion för att hantera markering och etikettering
     def make_onselect(plot_name):
         def _onselect(xmin, xmax):
             if xmax < xmin:
@@ -75,6 +76,7 @@ def process_file(file_path: str):
                 print(f"[{plot_name}] index {start_idx}..{end_idx} => '{user_label}'")
         return _onselect
 
+    # Skapa span selectors för att välja intervall i de två diagrammen
     span_acc = SpanSelector(
         ax_acc, make_onselect("accelerometer"), 'horizontal',
         useblit=True, props=dict(alpha=0.5, facecolor='red')
@@ -84,6 +86,7 @@ def process_file(file_path: str):
         useblit=True, props=dict(alpha=0.5, facecolor='green')
     )
 
+    # Funktion för att spara data och flytta originalfilen
     def save_data(event):
         if not os.path.exists('LabeledData'):
             os.makedirs('LabeledData')
@@ -91,7 +94,7 @@ def process_file(file_path: str):
         df.to_csv(out_file, index=False)
         print(f"Data sparad till: {out_file}")
 
-        # Flytta originalfilen till Papperskorg
+        # Flytta originalfilen till mappen "Papperskorg"
         trash_dir = 'Papperskorg'
         if not os.path.exists(trash_dir):
             os.makedirs(trash_dir)
@@ -105,6 +108,7 @@ def process_file(file_path: str):
         root.destroy()
         plt.close(fig)
 
+    # Lägg till en knapp i figuren för att spara data
     ax_button = plt.axes([0.82, 0.01, 0.12, 0.05])
     button = Button(ax_button, 'Spara')
     button.on_clicked(save_data)
