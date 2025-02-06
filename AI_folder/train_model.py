@@ -2,8 +2,6 @@
 import pandas as pd
 import tkinter as tk
 import numpy as np
-import numba as nb
-from numba import njit
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.models import Sequential
@@ -30,7 +28,6 @@ class ModelTrainer:
         df[self.sensor_cols] = scaler.fit_transform(df[self.sensor_cols])
         return df
     
-    @njit
     def create_sequences(self, df):
         X, y = [], []
         data = df[self.sensor_cols].values
@@ -42,7 +39,7 @@ class ModelTrainer:
         X = np.array(X)
         y = np.array(y)
         return X, y
-    @njit
+
     def build_model(self, num_classes):
         model = Sequential()
         model.add(LSTM(64, input_shape=(self.window_size, len(self.sensor_cols)), return_sequences=True))
@@ -52,7 +49,7 @@ class ModelTrainer:
         model.add(Dense(num_classes, activation='softmax'))
         model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
         return model
-    @njit
+    
     def train(self, epochs=20, batch_size=32):
         df = self.load_and_preprocess_data()
         X, y = self.create_sequences(df)
