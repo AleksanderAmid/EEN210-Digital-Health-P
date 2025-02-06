@@ -1,232 +1,192 @@
-<!DOCTYPE html>
 <html>
-<head>
-  <title>Fall Detection - Live Data</title>
-  <style>
-    /* Style for the scrollable message area */
-    #messages {
-      overflow-y: scroll;
-      height: 30vh;
-      width: 60vw;
-      border: 1px solid #ccc;
-      padding: 10px;
-      font-family: Arial, sans-serif;
-      margin-bottom: 20px;
-    }
-    .message {
-      margin-bottom: 10px;
-      padding: 5px;
-      border-bottom: 1px solid #eee;
-    }
-    /* Styles for the label list */
-    #labelList {
-      width: 60vw;
-      font-family: Arial, sans-serif;
-      margin-bottom: 20px;
-    }
-    #labelList ul {
-      list-style-type: none;
-      padding: 0;
-    }
-    #labelList li {
-      padding: 5px;
-      font-size: 16px;
-      color: red;  /* default color */
-    }
-    .active-label {
-      color: green !important;
-      font-weight: bold;
-    }
-  </style>
-  <!-- Include Chart.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-  <h1>Real-time Fall Detection Data</h1>
-  
-  <!-- Label list section -->
-  <div id="labelList">
-    <h2>Prediction Labels</h2>
-    <ul>
-      <li id="label-0">0: unlabeled (Probably Standing)</li>
-      <li id="label-1">1: gait</li>
-      <li id="label-2">2: sit</li>
-      <li id="label-3">3: squat</li>
-      <li id="label-4">4: jump</li>
-      <li id="label-5">5: fall</li>
-      <li id="label-6">6: stumble</li>
-      <li id="label-7">7: turn</li>
-    </ul>
-  </div>
-  
-  <!-- Message area to display JSON text messages -->
-  <div id="messages"></div>
-  
-  <!-- Canvas element for live sensor plotting -->
-  <canvas id="sensorChart" width="800" height="400"></canvas>
-  
-  <button id="closeButton">Close Connection</button>
-
-  <script>
-    // Set your WebSocket server's IP address (update as needed)
-    var ipAddress = "192.168.150.40";
-    var ws = new WebSocket("ws://" + ipAddress + ":8000/ws");
-
-    // Get DOM elements
-    var messagesDiv = document.getElementById('messages');
-    var labelListItems = [];
-    // Populate the labelListItems array with the list items by id
-    for (var i = 0; i <= 7; i++) {
-      labelListItems[i] = document.getElementById('label-' + i);
-    }
+  <head>
+    <title>Fall Detection</title>
+    <!-- Include Chart.js from a CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      /* Style for the message log area */
+      #messages {
+        overflow-y: scroll;
+        height: 90vh;
+        width: 60vw;
+        list-style-type: none;
+        padding: 0;
+      }
+      /* Optional styling for the canvas elements */
+      canvas {
+        margin-top: 20px;
+        border: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Real-time Data Collection</h1>
+    <button id="closeButton">Close Connection</button>
+    <ul id="messages"></ul>
     
-    var ctx = document.getElementById('sensorChart').getContext('2d');
-
-    // Create a Chart.js line chart with six datasets (three for accelerometer, three for gyroscope)
-    var sensorChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [], // Will use timestamps
-        datasets: [
-          {
-            label: 'Acc X',
-            borderColor: 'red',
-            backgroundColor: 'rgba(255,0,0,0.1)',
-            data: [],
-            fill: false,
-            tension: 0.1
-          },
-          {
-            label: 'Acc Y',
-            borderColor: 'green',
-            backgroundColor: 'rgba(0,255,0,0.1)',
-            data: [],
-            fill: false,
-            tension: 0.1
-          },
-          {
-            label: 'Acc Z',
-            borderColor: 'blue',
-            backgroundColor: 'rgba(0,0,255,0.1)',
-            data: [],
-            fill: false,
-            tension: 0.1
-          },
-          {
-            label: 'Gyro X',
-            borderColor: 'orange',
-            backgroundColor: 'rgba(255,165,0,0.1)',
-            data: [],
-            fill: false,
-            tension: 0.1
-          },
-          {
-            label: 'Gyro Y',
-            borderColor: 'purple',
-            backgroundColor: 'rgba(128,0,128,0.1)',
-            data: [],
-            fill: false,
-            tension: 0.1
-          },
-          {
-            label: 'Gyro Z',
-            borderColor: 'brown',
-            backgroundColor: 'rgba(165,42,42,0.1)',
-            data: [],
-            fill: false,
-            tension: 0.1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: {
-            display: true,
-            title: {
-              display: true,
-              text: 'Time'
+    <!-- Canvas for Acceleration Data -->
+    <canvas id="accChart" width="600" height="300"></canvas>
+    <!-- Canvas for Gyroscope Data -->
+    <canvas id="gyroChart" width="600" height="300"></canvas>
+    
+    <script>
+      // Change the IP address based on your current wifi/ip address
+      var ipAddress = "your_IP_Address";
+      var ws = new WebSocket("ws://" + ipAddress + ":8000/ws");
+      
+      // Use a counter for the x-axis (data point index)
+      var pointIndex = 0;
+      
+      // Setup the acceleration chart using Chart.js
+      var ctxAcc = document.getElementById('accChart').getContext('2d');
+      var accChart = new Chart(ctxAcc, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Acc X',
+              data: [],
+              borderColor: 'rgba(255, 99, 132, 1)',
+              fill: false,
+              tension: 0.1
+            },
+            {
+              label: 'Acc Y',
+              data: [],
+              borderColor: 'rgba(54, 162, 235, 1)',
+              fill: false,
+              tension: 0.1
+            },
+            {
+              label: 'Acc Z',
+              data: [],
+              borderColor: 'rgba(75, 192, 192, 1)',
+              fill: false,
+              tension: 0.1
             }
-          },
-          y: {
-            display: true,
-            title: {
-              display: true,
-              text: 'Sensor Value'
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Data Point'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Acceleration'
+              }
             }
           }
         }
-      }
-    });
-
-    // Limit the number of data points shown on the chart
-    var maxDataPoints = 50;
-
-    ws.onopen = function (event) {
-      console.log("WebSocket connected. State:", ws.readyState);
-    };
-
-    ws.onmessage = function (event) {
-      console.log("Received data:", event.data);
-      // Parse the incoming JSON data
-      var data = JSON.parse(event.data);
-
-      // Update the label list only if the label is a valid number.
-      var predictedLabel = parseInt(data.label);
-      if (!isNaN(predictedLabel)) {
-        // Loop through all label list items and set to red,
-        // then set the active label (predictedLabel) to green.
-        for (var i = 0; i < labelListItems.length; i++) {
-          if (i === predictedLabel) {
-            labelListItems[i].classList.add("active-label");
-          } else {
-            labelListItems[i].classList.remove("active-label");
+      });
+      
+      // Setup the gyroscope chart using Chart.js
+      var ctxGyro = document.getElementById('gyroChart').getContext('2d');
+      var gyroChart = new Chart(ctxGyro, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Gyro X',
+              data: [],
+              borderColor: 'rgba(153, 102, 255, 1)',
+              fill: false,
+              tension: 0.1
+            },
+            {
+              label: 'Gyro Y',
+              data: [],
+              borderColor: 'rgba(255, 159, 64, 1)',
+              fill: false,
+              tension: 0.1
+            },
+            {
+              label: 'Gyro Z',
+              data: [],
+              borderColor: 'rgba(255, 205, 86, 1)',
+              fill: false,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Data Point'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Gyroscope'
+              }
+            }
           }
         }
-      } else {
-        // If prediction is not ready, remove any active-label highlighting.
-        labelListItems.forEach(function(item) {
-          item.classList.remove("active-label");
-        });
-      }
-
-      // Create a new message element and display the data
-      var message = document.createElement('li');
-      message.className = "message";
-      message.innerHTML = "<div><strong>Timestamp:</strong> " + data.timestamp + "</div>" +
-                          "<div><strong>Acceleration:</strong> (" + data.acceleration_x + ", " + data.acceleration_y + ", " + data.acceleration_z + ")</div>" +
-                          "<div><strong>Gyroscope:</strong> (" + data.gyroscope_x + ", " + data.gyroscope_y + ", " + data.gyroscope_z + ")</div>" +
-                          "<div><strong>Prediction:</strong> <span class='prediction'>" + data.label + "</span></div>";
-      messagesDiv.appendChild(message);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      // Update the chart with new data using the timestamp as the label
-      sensorChart.data.labels.push(data.timestamp);
-      sensorChart.data.datasets[0].data.push(data.acceleration_x);
-      sensorChart.data.datasets[1].data.push(data.acceleration_y);
-      sensorChart.data.datasets[2].data.push(data.acceleration_z);
-      sensorChart.data.datasets[3].data.push(data.gyroscope_x);
-      sensorChart.data.datasets[4].data.push(data.gyroscope_y);
-      sensorChart.data.datasets[5].data.push(data.gyroscope_z);
-
-      // Remove old data if we exceed the maximum number of data points
-      if (sensorChart.data.labels.length > maxDataPoints) {
-        sensorChart.data.labels.shift();
-        sensorChart.data.datasets.forEach(function(dataset) {
-          dataset.data.shift();
-        });
-      }
-      sensorChart.update();
-    };
-
-    ws.onclose = function (event) {
-      console.log("WebSocket closed:", event);
-    };
-
-    document.getElementById('closeButton').addEventListener('click', function () {
-      ws.close();
-      console.log("Connection Closed");
-    });
-  </script>
-</body>
+      });
+      
+      // WebSocket event: Connection opened
+      ws.onopen = function (event) {
+        console.log("WebSocket state:", ws.readyState);
+      };
+      
+      // WebSocket event: Message received
+      ws.onmessage = function (event) {
+        console.log("Received data:", event.data);
+        
+        // Append the message to the log list
+        var messages = document.getElementById('messages');
+        var message = document.createElement('li');
+        message.textContent = event.data;
+        messages.appendChild(message);
+        messages.scrollTop = messages.scrollHeight;
+        
+        // Parse the incoming JSON data
+        try {
+          var json_data = JSON.parse(event.data);
+          
+          // Increment the x-axis counter
+          pointIndex++;
+          
+          // Update acceleration chart data
+          accChart.data.labels.push(pointIndex);
+          accChart.data.datasets[0].data.push(json_data.acceleration_x);
+          accChart.data.datasets[1].data.push(json_data.acceleration_y);
+          accChart.data.datasets[2].data.push(json_data.acceleration_z);
+          accChart.update();
+          
+          // Update gyroscope chart data
+          gyroChart.data.labels.push(pointIndex);
+          gyroChart.data.datasets[0].data.push(json_data.gyroscope_x);
+          gyroChart.data.datasets[1].data.push(json_data.gyroscope_y);
+          gyroChart.data.datasets[2].data.push(json_data.gyroscope_z);
+          gyroChart.update();
+        } catch (e) {
+          console.error("Error parsing JSON data:", e);
+        }
+      };
+      
+      // WebSocket event: Connection closed
+      ws.onclose = function (event) {
+        console.log("WebSocket closed:", event);
+      };
+      
+      // Close connection when the button is clicked
+      var closeButton = document.getElementById('closeButton');
+      closeButton.addEventListener('click', function () {
+        ws.close();
+        console.log("Connection Closed");
+      });
+    </script>
+  </body>
 </html>
