@@ -1,12 +1,12 @@
+#NEW
 import os
 import json
 from datetime import datetime
 
 import pandas as pd
 import uvicorn
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
-from fastapi import WebSocketDisconnect
 from starlette.middleware.cors import CORSMiddleware
 
 # For model loading and prediction
@@ -84,7 +84,7 @@ def preprocess_window(window: np.ndarray) -> np.ndarray:
     # Copy and ensure float type for calculations
     processed = window.copy().astype(float)
     
-    # Convert accelerometer values from raw units to m/s^2
+    # Convert accelerometer values from raw units to m/s²
     processed[:, :3] = (processed[:, :3] / ACC_LSB_PER_G) * G_MS2
     # Convert gyroscope values from raw units to °/s
     processed[:, 3:] = processed[:, 3:] / GYRO_LSB_PER_DPS
@@ -136,12 +136,12 @@ class WebSocketManager:
     def __init__(self):
         self.active_connections = set()
 
-    async def connect(self, websocket):
+    async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.add(websocket)
         print("WebSocket connected")
 
-    def disconnect(self, websocket):
+    def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
         print("WebSocket disconnected")
 
@@ -160,7 +160,7 @@ async def get():
     return HTMLResponse(html)
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket):
+async def websocket_endpoint(websocket: WebSocket):
     await websocket_manager.connect(websocket)
     try:
         while True:
