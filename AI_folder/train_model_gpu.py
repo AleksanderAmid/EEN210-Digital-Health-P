@@ -90,7 +90,7 @@ if __name__ == "__main__":
     )
     if file_path:
         trainer = ModelTrainer(file_path, window_size=20)
-        model, history = trainer.train(epochs=40, batch_size=2048*3)
+        model, history = trainer.train(epochs=40, batch_size=2048*4)
         print("Model training complete.")
         print("Training history saved to 'training_history.json'.")
     else:
