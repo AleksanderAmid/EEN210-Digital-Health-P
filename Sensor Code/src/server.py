@@ -2,14 +2,16 @@ import os
 import json
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import uvicorn
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi import WebSocketDisconnect
 from starlette.middleware.cors import CORSMiddleware
-from tensorflow.keras.models import load_model as keras_load_model  # Import Keras load_model
+
+# Import for model loading and prediction
+from tensorflow.keras.models import load_model as keras_load_model
+import numpy as np
 
 app = FastAPI()
 # Enable CORS for all origins
@@ -24,6 +26,11 @@ app.add_middleware(
 with open("./src/index.html", "r") as f:
     html = f.read()
 
+# Global sensor buffer for accumulating samples (for a sliding window)
+sensor_data_buffer = []
+WINDOW_SIZE = 20  # should match your training window size
+SENSOR_COLS = ['acceleration_x', 'acceleration_y', 'acceleration_z',
+               'gyroscope_x', 'gyroscope_y', 'gyroscope_z']
 
 class DataProcessor:
     def __init__(self):
@@ -37,7 +44,6 @@ class DataProcessor:
     def save_to_csv(self):
         df = pd.DataFrame.from_dict(self.data_buffer)
         self.data_buffer = []
-        # Append the new row to the existing DataFrame
         df.to_csv(
             self.file_path,
             index=False,
@@ -45,36 +51,60 @@ class DataProcessor:
             header=not os.path.exists(self.file_path),
         )
 
-
 data_processor = DataProcessor()
 
+# ------------------ Model Loading and Prediction ------------------
 
 def load_model():
     """
-    Load the Keras model from the .h5 file.
+    Loads the saved Keras model.
     """
-    model = keras_load_model("fall_detection_model.h5")
-    return model
+    model_path = "fall_detection_model.h5"
+    try:
+        model = keras_load_model(model_path)
+        print("Model loaded successfully.")
+        return model
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None
 
+def predict_label(model=None, new_data=None):
+    """
+    Collects incoming sensor data into a sliding window and predicts the label once enough samples have been received.
+    
+    new_data: dictionary containing a single sensor sample.
+    """
+    global sensor_data_buffer
+    if model is None or new_data is None:
+        return 0
 
-def predict_label(model=None, data=None):
-    """
-    Process the input data and predict the label using the loaded model.
-    This example assumes that:
-      - The model expects a 2D input (batch_size x features).
-      - The model outputs a single probability (for binary classification).
-    Adjust the preprocessing and threshold as needed.
-    """
-    if model is not None and data is not None:
-        # Convert list of raw data into a NumPy array and reshape it for prediction
-        data_array = np.array(data).reshape(1, -1)
-        prediction = model.predict(data_array)
-        # For a binary classification model returning a probability,
-        # we can use 0.5 as the threshold.
-        label = int(prediction[0][0] > 0.5)
+    # Extract sensor values from the incoming JSON data.
+    # It is assumed that new_data contains keys matching SENSOR_COLS.
+    try:
+        sensor_values = [float(new_data[col]) for col in SENSOR_COLS]
+    except KeyError:
+        print("Incoming data does not have the required sensor fields.")
+        return 0
+
+    # Append the new sample to the global sensor data buffer
+    sensor_data_buffer.append(sensor_values)
+
+    # If we have accumulated enough samples, prepare input for prediction
+    if len(sensor_data_buffer) >= WINDOW_SIZE:
+        # Use the most recent WINDOW_SIZE samples
+        window = sensor_data_buffer[-WINDOW_SIZE:]
+        # Convert to numpy array and reshape to (1, WINDOW_SIZE, number_of_features)
+        window = np.array(window).reshape((1, WINDOW_SIZE, len(SENSOR_COLS)))
+        # Run prediction
+        prediction = model.predict(window)
+        # Get the predicted label (assumes softmax activation and categorical output)
+        label = int(np.argmax(prediction, axis=1)[0])
         return label
-    return 0
+    else:
+        # Not enough data accumulated yet; optionally return a default label or a flag.
+        return None
 
+# ------------------------------------------------------------------
 
 class WebSocketManager:
     def __init__(self):
@@ -96,15 +126,12 @@ class WebSocketManager:
             except WebSocketDisconnect:
                 self.disconnect(connection)
 
-
 websocket_manager = WebSocketManager()
 model = load_model()  # Load the model when the server starts
-
 
 @app.get("/")
 async def get():
     return HTMLResponse(html)
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -112,34 +139,27 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            print("Received data from websocket")
-
-            # Parse JSON data and prepare it for processing
             json_data = json.loads(data)
-            # Extract raw values (ensure they are in the expected order)
-            raw_data = list(json_data.values())
-
-            # Add a timestamp to the received data
+            # Add timestamp to the received data
             json_data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
             data_processor.add_data(json_data)
-            # Save to CSV every 100 samples (adjust if needed)
             if len(data_processor.data_buffer) >= 100:
                 data_processor.save_to_csv()
 
-            # Use the model to predict the label for the incoming data
-            label = predict_label(model, raw_data)
-            json_data["label"] = label
+            # Run prediction using the incoming sensor sample.
+            # Note: predict_label uses a global buffer to accumulate WINDOW_SIZE samples.
+            label = predict_label(model, json_data)
+            # Only update the JSON if a prediction was made.
+            if label is not None:
+                json_data["label"] = label
+            else:
+                json_data["label"] = "Insufficient data for prediction"
 
-            # Log the data with prediction to the terminal
             print(json_data)
-
-            # Broadcast the data with prediction to all connected clients
             await websocket_manager.broadcast_message(json.dumps(json_data))
 
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
