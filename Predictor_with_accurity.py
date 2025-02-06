@@ -76,6 +76,8 @@ def main():
 
     # Assume the CSV has a column named 'label'
     label_df = pd.read_csv(label_csv_path)
+    # Drop rows with missing values in the 'label' column to avoid NaNs
+    label_df = label_df.dropna(subset=['label'])
     real_labels = label_df["label"].values
 
     # In case the number of labels and predictions differ, take the common length.
