@@ -78,8 +78,8 @@ if __name__ == "__main__":
         filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
     )
     if file_path:
-        trainer = ModelTrainer(file_path, window_size=20)
-        model, history = trainer.train(epochs=40, batch_size=2048*4)
+        trainer = ModelTrainer(file_path, window_size=70)
+        model, history = trainer.train(epochs=40, batch_size=1024)
         print("Model training complete.")
         print("Training history saved to 'training_history.json'.")
     else:

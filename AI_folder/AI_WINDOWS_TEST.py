@@ -122,8 +122,8 @@ if __name__ == "__main__":
     )
     if file_path:
         # Bestäm vilka window sizes du vill testa och hur många epoch du vill köra (ex. 5).
-        sizes_to_try = [10, 20, 30, 40, 50]
-        results_dict = compare_window_sizes(file_path, window_sizes=sizes_to_try, epochs=5, batch_size=32)
+        sizes_to_try = [50, 60, 70, 80, 90, 100]
+        results_dict = compare_window_sizes(file_path, window_sizes=sizes_to_try, epochs=10, batch_size=1024)
         plot_comparison(results_dict)
     else:
         print("No file selected. Exiting.")

@@ -32,7 +32,7 @@ class ModelTrainer:
         X, y = [], []
         data = df[self.sensor_cols].values
         labels = df['label'].values
-        step = self.window_size // 2  # 50% overlap
+        step = self.window_size // 7  # 50% overlap
         for i in range(0, len(data) - self.window_size + 1, step):
             X.append(data[i:i+self.window_size])
             # Using the center of the window as the label
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     )
     if file_path:
         trainer = ModelTrainer(file_path, window_size=50)
-        model, history = trainer.train(epochs=40, batch_size=32)
+        model, history = trainer.train(epochs=40, batch_size=1024)
         print("Model training complete.")
         print("Training history saved to 'training_history.json'.")
     else:

@@ -7,178 +7,132 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tkinter import messagebox
-from scipy.signal import savgol_filter
 from matplotlib.widgets import Button
 
-# Parametrar för filtret och konstanter
-ACC_LSB_PER_G = 16384.0
-GYRO_LSB_PER_DPS = 131.0
-G_MS2 = 9.81
+# Constant for time axis calculation (if your CSV is sampled at this rate)
 SAMPLE_RATE = 66.5
-WINDOW_LENGTH = 11
-POLY_ORDER = 2
-
-def fix_offset_in_memory(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Gör offset-korrigering i minnet (tar medelvärde av de första 10 raderna).
-    Skapar ingen fysisk fil.
-    """
-    df_copy = df.copy()
-    cols = ['acceleration_x','acceleration_y','acceleration_z',
-            'gyroscope_x','gyroscope_y','gyroscope_z']
-    offsets = df_copy[cols].head(10).mean()
-    df_copy[cols] = df_copy[cols] - offsets
-    return df_copy
 
 def process_file(file_path: str):
     """
-    Läser in en fil, gör offset-korrigering i minnet,
-    filtrerar, plottar och skapar två knappar:
-      - "Ready to Label": Skapar offset-fil och flyttar till 'readyToLabel2'
-      - "Flytta till Papperskorg": Flyttar originalfilen till 'papperskorg'
-    När en knapp klickas stängs plot-fönstret och funktionen returnerar.
+    Reads a CSV file, plots the raw sensor data (accelerometer and gyroscope),
+    and provides two buttons:
+      - "Ready to Label": Moves the file to the 'readyToLabel2' folder.
+      - "Flytta till Papperskorg": Moves the file to the 'papperskorg' folder.
     """
-    print(f"\n--- Bearbetar fil: {file_path} ---")
-
-    # 1) Läs in data
-    df_original = pd.read_csv(file_path)
-
-    # 2) Offset i minnet
-    offset_df = fix_offset_in_memory(df_original)
-
-    # 3) Skapa tidsaxel
-    time = np.arange(len(offset_df)) / SAMPLE_RATE
-
-    # 4) Extrahera och filtrera accelerationsdata
-    acc_x_ms2 = (offset_df['acceleration_x'] / ACC_LSB_PER_G) * G_MS2
-    acc_y_ms2 = (offset_df['acceleration_y'] / ACC_LSB_PER_G) * G_MS2
-    acc_z_ms2 = (offset_df['acceleration_z'] / ACC_LSB_PER_G) * G_MS2
-
-    acc_x_filt = savgol_filter(acc_x_ms2, WINDOW_LENGTH, POLY_ORDER)
-    acc_y_filt = savgol_filter(acc_y_ms2, WINDOW_LENGTH, POLY_ORDER)
-    acc_z_filt = savgol_filter(acc_z_ms2, WINDOW_LENGTH, POLY_ORDER)
-
-    # 5) Extrahera och filtrera gyroskopdata
-    gyro_x_dps = offset_df['gyroscope_x'] / GYRO_LSB_PER_DPS
-    gyro_y_dps = offset_df['gyroscope_y'] / GYRO_LSB_PER_DPS
-    gyro_z_dps = offset_df['gyroscope_z'] / GYRO_LSB_PER_DPS
-
-    gyro_x_filt = savgol_filter(gyro_x_dps, WINDOW_LENGTH, POLY_ORDER)
-    gyro_y_filt = savgol_filter(gyro_y_dps, WINDOW_LENGTH, POLY_ORDER)
-    gyro_z_filt = savgol_filter(gyro_z_dps, WINDOW_LENGTH, POLY_ORDER)
-
-    # 6) Plotta
+    print(f"\n--- Processing file: {file_path} ---")
+    
+    # 1) Read data
+    df = pd.read_csv(file_path)
+    
+    # 2) Create a time axis based on the sample rate
+    time = np.arange(len(df)) / SAMPLE_RATE
+    
+    # 3) Extract raw sensor data
+    acc_x = df['acceleration_x']
+    acc_y = df['acceleration_y']
+    acc_z = df['acceleration_z']
+    
+    gyro_x = df['gyroscope_x']
+    gyro_y = df['gyroscope_y']
+    gyro_z = df['gyroscope_z']
+    
+    # 4) Plot the raw sensor data
     fig, (ax_acc, ax_gyro) = plt.subplots(2, 1, figsize=(10, 8))
     fig.canvas.manager.set_window_title(file_path)
-
-    ax_acc.plot(time, acc_x_filt, label='Acc X (filt)')
-    ax_acc.plot(time, acc_y_filt, label='Acc Y (filt)')
-    ax_acc.plot(time, acc_z_filt, label='Acc Z (filt)')
-    ax_acc.set_title('Filtrerad Accelerationsdata (m/s^2) [Offset-korr i minnet]')
-    ax_acc.set_xlabel('Tid (s)')
-    ax_acc.set_ylabel('m/s^2')
+    
+    ax_acc.plot(time, acc_x, label='Acc X')
+    ax_acc.plot(time, acc_y, label='Acc Y')
+    ax_acc.plot(time, acc_z, label='Acc Z')
+    ax_acc.set_title('Accelerometer Data (Raw)')
+    ax_acc.set_xlabel('Time (s)')
+    ax_acc.set_ylabel('Acceleration')
     ax_acc.legend()
     ax_acc.grid(True)
-
-    ax_gyro.plot(time, gyro_x_filt, label='Gyro X (filt)')
-    ax_gyro.plot(time, gyro_y_filt, label='Gyro Y (filt)')
-    ax_gyro.plot(time, gyro_z_filt, label='Gyro Z (filt)')
-    ax_gyro.set_title('Filtrerad Gyroskopdata (°/s) [Offset-korr i minnet]')
-    ax_gyro.set_xlabel('Tid (s)')
-    ax_gyro.set_ylabel('°/s')
+    
+    ax_gyro.plot(time, gyro_x, label='Gyro X')
+    ax_gyro.plot(time, gyro_y, label='Gyro Y')
+    ax_gyro.plot(time, gyro_z, label='Gyro Z')
+    ax_gyro.set_title('Gyroscope Data (Raw)')
+    ax_gyro.set_xlabel('Time (s)')
+    ax_gyro.set_ylabel('Angular Velocity')
     ax_gyro.legend()
     ax_gyro.grid(True)
-
+    
     plt.tight_layout()
-
-    # Inre funktioner för knapp-klick
+    
+    # Callback for "Ready to Label": move file to 'readyToLabel2'
     def on_ready_to_label(event):
-        """
-        Skapar en offset-fil av offset_df, flyttar den till 'readyToLabel2'.
-        Stänger plott-fönstret och återgår till skriptet.
-        """
         target_dir = 'readyToLabel2'
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
-
         filename = os.path.basename(file_path)
-        offset_filename = f"offset_fixed_samefile_{filename}"
-        offset_path = os.path.join(target_dir, offset_filename)
-
-        offset_df.to_csv(offset_path, index=False)
-
+        target_path = os.path.join(target_dir, filename)
+        shutil.move(file_path, target_path)
+        
         root = tk.Tk()
         root.withdraw()
         messagebox.showinfo(
-            "Offset-fil skapad och flyttad",
-            f"Offset-fil:\n{offset_filename}\nhar flyttats till '{target_dir}'."
+            "File Moved",
+            f"File:\n{filename}\nhas been moved to '{target_dir}'."
         )
         root.destroy()
-
-        plt.close(fig)  # Stäng figuren för att fortsätta i koden
-
+        plt.close(fig)
+    
+    # Callback for "Flytta till Papperskorg": move file to 'papperskorg'
     def on_move_to_trash(event):
-        """
-        Flyttar originalfilen till 'papperskorg', stänger plott-fönstret.
-        """
         trash_dir = 'papperskorg'
         if not os.path.exists(trash_dir):
             os.makedirs(trash_dir)
-
         target_path = os.path.join(trash_dir, os.path.basename(file_path))
         shutil.move(file_path, target_path)
-
+        
         root = tk.Tk()
         root.withdraw()
         messagebox.showinfo(
-            "Originalfil flyttad",
-            f"Originalfilen:\n{os.path.basename(file_path)}\n"
-            f"har flyttats till '{trash_dir}'."
+            "File Moved",
+            f"File:\n{os.path.basename(file_path)}\nhas been moved to '{trash_dir}'."
         )
         root.destroy()
-
-        plt.close(fig)  # Stäng figuren för att fortsätta i koden
-
-    # Knappar för "Ready to Label" och "Flytta till Papperskorg"
-    ax_button_offset = plt.axes([0.68, 0.01, 0.3, 0.05])
-    button_offset = Button(ax_button_offset, 'Ready to Label')
-    button_offset.on_clicked(on_ready_to_label)
-
+        plt.close(fig)
+    
+    # Create buttons for user choice
+    ax_button_ready = plt.axes([0.68, 0.01, 0.3, 0.05])
+    button_ready = Button(ax_button_ready, 'Ready to Label')
+    button_ready.on_clicked(on_ready_to_label)
+    
     ax_button_trash = plt.axes([0.35, 0.01, 0.3, 0.05])
     button_trash = Button(ax_button_trash, 'Flytta till Papperskorg')
     button_trash.on_clicked(on_move_to_trash)
-
+    
     plt.show()
 
 def main():
     """
-    Huvudfunktion där användaren via en messagebox väljer:
-      - Ja (enskild fil)
-      - Nej (mapp med flera CSV-filer)
+    Main function that asks the user if they want to process a single file or a folder of files.
     """
     root = tk.Tk()
     root.withdraw()
-
+    
     choice = messagebox.askquestion(
-        "Välj källa",
-        "Ja=Enskild fil, Nej=Mapp med filer"
+        "Choose Source",
+        "Yes = Single file, No = Folder with files"
     )
-
+    
     if choice == 'yes':
-        # Användare valde enskild fil
+        # User selected a single file
         path = fd.askopenfilename(
-            title="Välj EN CSV-fil",
+            title="Select a CSV file",
             filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
             initialdir=os.getcwd()
         )
         if path and os.path.isfile(path):
             process_file(path)
         else:
-            messagebox.showwarning("Varning", "Ingen giltig fil vald.")
+            messagebox.showwarning("Warning", "No valid file selected.")
     else:
-        # Användare valde mapp
+        # User selected a folder
         folder_path = fd.askdirectory(
-            title="Välj en mapp med CSV-filer",
+            title="Select a folder with CSV files",
             initialdir=os.getcwd()
         )
         if folder_path and os.path.isdir(folder_path):
@@ -189,13 +143,13 @@ def main():
             ]
             all_files.sort()
             if not all_files:
-                messagebox.showwarning("Inga CSV-filer", "Ingen CSV-fil hittades i mappen.")
+                messagebox.showwarning("No CSV Files", "No CSV file found in the folder.")
             else:
                 for csv_file in all_files:
                     process_file(csv_file)
         else:
-            messagebox.showwarning("Avbrutet", "Ingen giltig mapp vald.")
-
+            messagebox.showwarning("Cancelled", "No valid folder selected.")
+    
     sys.exit(0)
 
 if __name__ == "__main__":
