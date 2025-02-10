@@ -75,7 +75,7 @@ def extract_features(window_data):
     
     return features
 
-def process_data_with_windows(data, window_size=120):
+def process_data_with_windows(data, window_size=70):
     """Process data using sliding windows"""
     processed_data = []
     
@@ -83,7 +83,7 @@ def process_data_with_windows(data, window_size=120):
     data = data.sort_values('timestamp')
     
     # Create windows with 25% overlap
-    step_size = window_size // 6
+    step_size = window_size // 4
     
     for i in range(0, len(data) - window_size + 1, step_size):
         window = data.iloc[i:i + window_size]
