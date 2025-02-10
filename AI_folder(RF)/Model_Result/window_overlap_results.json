@@ -2,196 +2,205 @@
     {
         "window_size": 10,
         "overlap": 5,
-        "accuracy": 97.92576419213974,
-        "precision": 98.07692307692307,
-        "recall": 73.91304347826086,
-        "f1": 84.29752066115702,
-        "fall_accuracy": 73.91304347826086
+        "accuracy": 98.14285714285714,
+        "precision": 83.87096774193549,
+        "recall": 43.333333333333336,
+        "f1": 57.14285714285715,
+        "fall_accuracy": 43.333333333333336
     },
     {
         "window_size": 10,
         "overlap": 15,
-        "accuracy": 97.66990291262137,
-        "precision": 96.49122807017544,
-        "recall": 71.42857142857143,
-        "f1": 82.08955223880598,
-        "fall_accuracy": 71.42857142857143
+        "accuracy": 98.22259839187474,
+        "precision": 88.23529411764706,
+        "recall": 44.11764705882353,
+        "f1": 58.82352941176471,
+        "fall_accuracy": 44.11764705882353
     },
     {
         "window_size": 10,
         "overlap": 25,
-        "accuracy": 97.70603228547154,
-        "precision": 94.20289855072464,
-        "recall": 73.86363636363636,
-        "f1": 82.80254777070064,
-        "fall_accuracy": 73.86363636363636
+        "accuracy": 98.22222222222223,
+        "precision": 82.22222222222221,
+        "recall": 48.05194805194805,
+        "f1": 60.655737704918025,
+        "fall_accuracy": 48.05194805194805
     },
     {
         "window_size": 10,
         "overlap": 50,
-        "accuracy": 98.24029126213593,
-        "precision": 97.0,
-        "recall": 78.86178861788618,
-        "f1": 86.99551569506725,
-        "fall_accuracy": 78.86178861788618
+        "accuracy": 98.3862433862434,
+        "precision": 86.15384615384616,
+        "recall": 51.85185185185185,
+        "f1": 64.73988439306358,
+        "fall_accuracy": 51.85185185185185
     },
     {
         "window_size": 25,
         "overlap": 5,
-        "accuracy": 97.7715877437326,
-        "precision": 95.23809523809523,
-        "recall": 74.07407407407408,
-        "f1": 83.33333333333334,
-        "fall_accuracy": 74.07407407407408
+        "accuracy": 98.41849148418491,
+        "precision": 100.0,
+        "recall": 45.83333333333333,
+        "f1": 62.857142857142854,
+        "fall_accuracy": 45.83333333333333
     },
     {
         "window_size": 25,
         "overlap": 15,
-        "accuracy": 97.20101781170484,
-        "precision": 100.0,
-        "recall": 62.06896551724138,
-        "f1": 76.59574468085107,
-        "fall_accuracy": 62.06896551724138
+        "accuracy": 98.33333333333333,
+        "precision": 92.3076923076923,
+        "recall": 46.15384615384615,
+        "f1": 61.538461538461554,
+        "fall_accuracy": 46.15384615384615
     },
     {
         "window_size": 25,
         "overlap": 25,
-        "accuracy": 98.0349344978166,
-        "precision": 100.0,
-        "recall": 73.52941176470588,
-        "f1": 84.74576271186442,
-        "fall_accuracy": 73.52941176470588
+        "accuracy": 98.19047619047619,
+        "precision": 83.33333333333334,
+        "recall": 48.38709677419355,
+        "f1": 61.224489795918366,
+        "fall_accuracy": 48.38709677419355
     },
     {
         "window_size": 25,
         "overlap": 50,
-        "accuracy": 98.39883551673945,
-        "precision": 100.0,
-        "recall": 78.84615384615384,
-        "f1": 88.17204301075269,
-        "fall_accuracy": 78.84615384615384
+        "accuracy": 98.22222222222223,
+        "precision": 90.9090909090909,
+        "recall": 43.47826086956522,
+        "f1": 58.82352941176471,
+        "fall_accuracy": 43.47826086956522
     },
     {
         "window_size": 50,
         "overlap": 5,
-        "accuracy": 97.72727272727273,
-        "precision": 100.0,
-        "recall": 69.23076923076923,
-        "f1": 81.81818181818181,
-        "fall_accuracy": 69.23076923076923
+        "accuracy": 97.01492537313433,
+        "precision": 40.0,
+        "recall": 18.181818181818183,
+        "f1": 25.000000000000007,
+        "fall_accuracy": 18.181818181818183
     },
     {
         "window_size": 50,
         "overlap": 15,
-        "accuracy": 97.44897959183673,
+        "accuracy": 97.77777777777777,
         "precision": 100.0,
-        "recall": 66.66666666666666,
-        "f1": 80.0,
-        "fall_accuracy": 66.66666666666666
+        "recall": 23.076923076923077,
+        "f1": 37.5,
+        "fall_accuracy": 23.076923076923077
     },
     {
         "window_size": 50,
         "overlap": 25,
-        "accuracy": 95.51569506726457,
-        "precision": 88.88888888888889,
-        "recall": 47.05882352941176,
-        "f1": 61.53846153846153,
-        "fall_accuracy": 47.05882352941176
+        "accuracy": 97.84735812133071,
+        "precision": 83.33333333333334,
+        "recall": 33.33333333333333,
+        "f1": 47.61904761904761,
+        "fall_accuracy": 33.33333333333333
     },
     {
         "window_size": 50,
         "overlap": 50,
-        "accuracy": 98.7878787878788,
+        "accuracy": 98.67724867724867,
         "precision": 100.0,
-        "recall": 83.33333333333334,
-        "f1": 90.9090909090909,
-        "fall_accuracy": 83.33333333333334
+        "recall": 54.54545454545454,
+        "f1": 70.58823529411764,
+        "fall_accuracy": 54.54545454545454
     },
     {
         "window_size": 70,
         "overlap": 5,
-        "accuracy": 97.6,
-        "precision": 100.0,
-        "recall": 66.66666666666666,
-        "f1": 80.0,
-        "fall_accuracy": 66.66666666666666
+        "accuracy": 96.51567944250871,
+        "precision": 25.0,
+        "recall": 12.5,
+        "f1": 16.666666666666664,
+        "fall_accuracy": 12.5
     },
     {
         "window_size": 70,
         "overlap": 15,
-        "accuracy": 97.14285714285714,
-        "precision": 100.0,
-        "recall": 63.63636363636363,
-        "f1": 77.77777777777779,
-        "fall_accuracy": 63.63636363636363
+        "accuracy": 96.88473520249221,
+        "precision": 40.0,
+        "recall": 22.22222222222222,
+        "f1": 28.57142857142857,
+        "fall_accuracy": 22.22222222222222
     },
     {
         "window_size": 70,
         "overlap": 25,
-        "accuracy": 98.11320754716981,
-        "precision": 100.0,
-        "recall": 75.0,
-        "f1": 85.71428571428571,
-        "fall_accuracy": 75.0
+        "accuracy": 97.52747252747253,
+        "precision": 66.66666666666666,
+        "recall": 36.36363636363637,
+        "f1": 47.05882352941177,
+        "fall_accuracy": 36.36363636363637
     },
     {
         "window_size": 70,
         "overlap": 50,
-        "accuracy": 98.30508474576271,
-        "precision": 100.0,
-        "recall": 77.77777777777779,
-        "f1": 87.50000000000001,
-        "fall_accuracy": 77.77777777777779
+        "accuracy": 98.33333333333333,
+        "precision": 81.81818181818183,
+        "recall": 56.25,
+        "f1": 66.66666666666666,
+        "fall_accuracy": 56.25
     },
     {
         "window_size": 100,
         "overlap": 5,
-        "accuracy": 96.55172413793103,
+        "accuracy": 97.98994974874373,
         "precision": 100.0,
-        "recall": 57.14285714285714,
-        "f1": 72.72727272727273,
-        "fall_accuracy": 57.14285714285714
+        "recall": 33.33333333333333,
+        "f1": 50.0,
+        "fall_accuracy": 33.33333333333333
     },
     {
         "window_size": 100,
         "overlap": 15,
-        "accuracy": 97.9381443298969,
-        "precision": 100.0,
-        "recall": 71.42857142857143,
-        "f1": 83.33333333333333,
-        "fall_accuracy": 71.42857142857143
+        "accuracy": 97.30941704035875,
+        "precision": 50.0,
+        "recall": 16.666666666666664,
+        "f1": 25.0,
+        "fall_accuracy": 16.666666666666664
     },
     {
         "window_size": 100,
         "overlap": 25,
-        "accuracy": 100.0,
-        "precision": 100.0,
-        "recall": 100.0,
-        "f1": 100.0,
-        "fall_accuracy": 100.0
+        "accuracy": 96.42857142857143,
+        "precision": 40.0,
+        "recall": 25.0,
+        "f1": 30.76923076923077,
+        "fall_accuracy": 25.0
     },
     {
         "window_size": 100,
         "overlap": 50,
-        "accuracy": 98.18181818181819,
-        "precision": 100.0,
-        "recall": 75.0,
-        "f1": 85.71428571428571,
-        "fall_accuracy": 75.0
+        "accuracy": 98.14814814814815,
+        "precision": 75.0,
+        "recall": 54.54545454545454,
+        "f1": 63.1578947368421,
+        "fall_accuracy": 54.54545454545454
     },
     {
         "window_size": 125,
         "overlap": 5,
-        "accuracy": 98.57142857142858,
-        "precision": 100.0,
-        "recall": 80.0,
-        "f1": 88.8888888888889,
-        "fall_accuracy": 80.0
+        "accuracy": 97.5,
+        "precision": 50.0,
+        "recall": 25.0,
+        "f1": 33.33333333333333,
+        "fall_accuracy": 25.0
     },
     {
         "window_size": 125,
         "overlap": 15,
-        "accuracy": 96.15384615384616,
+        "accuracy": 95.53072625698324,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "fall_accuracy": 0.0
+    },
+    {
+        "window_size": 125,
+        "overlap": 25,
+        "accuracy": 98.52216748768473,
         "precision": 100.0,
         "recall": 50.0,
         "f1": 66.66666666666666,
@@ -199,20 +208,11 @@
     },
     {
         "window_size": 125,
-        "overlap": 25,
-        "accuracy": 96.62921348314607,
-        "precision": 100.0,
-        "recall": 57.14285714285714,
-        "f1": 72.72727272727273,
-        "fall_accuracy": 57.14285714285714
-    },
-    {
-        "window_size": 125,
         "overlap": 50,
-        "accuracy": 95.48872180451127,
-        "precision": 100.0,
-        "recall": 40.0,
-        "f1": 57.14285714285715,
-        "fall_accuracy": 40.0
+        "accuracy": 98.68852459016394,
+        "precision": 77.77777777777779,
+        "recall": 77.77777777777779,
+        "f1": 77.77777777777779,
+        "fall_accuracy": 77.77777777777779
     }
 ]
