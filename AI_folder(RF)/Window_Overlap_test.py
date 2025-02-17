@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 import json
-from model_trainer_evaluator import load_data, calculate_magnitudes, extract_features
+from RF_MODEL import load_data, calculate_magnitudes, extract_features
 
 def process_data_with_windows(data, window_size, overlap_percent):
     """Process data using sliding windows with specified overlap"""
@@ -69,7 +69,7 @@ def test_window_configurations():
         return
     
     # Define configurations to test
-    window_sizes = [10, 25, 50, 70, 100, 125]
+    window_sizes = [10, 25, 50, 70, 100,110, 125,135,150]
     overlap_percentages = [5, 15, 25, 50]
     
     results = []
