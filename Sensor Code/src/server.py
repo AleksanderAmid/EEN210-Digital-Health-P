@@ -1,4 +1,3 @@
-#NEW
 import os
 import json
 from datetime import datetime
@@ -8,24 +7,12 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from starlette.middleware.cors import CORSMiddleware
-
-# For model loading and prediction
-from tensorflow.keras.models import load_model as keras_load_model
 import numpy as np
-from scipy.signal import savgol_filter
+from joblib import load
 
-# Conversion and filter constants (as used in your labeling script)
-ACC_LSB_PER_G = 16384.0
-GYRO_LSB_PER_DPS = 131.0
-G_MS2 = 9.81
-WINDOW_LENGTH_FILTER = 11  # window length for the Savitzky-Golay filter
-POLY_ORDER = 2
-
-# Window size for prediction (should match what you used in training)
-WINDOW_SIZE = 20
-# Sensor columns in the expected order
-SENSOR_COLS = ['acceleration_x', 'acceleration_y', 'acceleration_z',
-               'gyroscope_x', 'gyroscope_y', 'gyroscope_z']
+# Import the necessary functions from your model code.
+# Ensure that 'model_code.py' is in the same directory or in your PYTHONPATH.
+from RF_MODEL import extract_features
 
 app = FastAPI()
 app.add_middleware(
@@ -39,9 +26,10 @@ app.add_middleware(
 with open("./src/index.html", "r") as f:
     html = f.read()
 
-# Global sensor data buffer to accumulate raw samples
-sensor_data_buffer = []
 
+#############################
+# Data Logging and Buffering
+#############################
 class DataProcessor:
     def __init__(self):
         self.data_buffer = []
@@ -63,75 +51,45 @@ class DataProcessor:
 
 data_processor = DataProcessor()
 
-# ------------------ Model Loading and Prediction ------------------
 
+#############################
+# Model Loading
+#############################
 def load_model():
-    """Loads the saved Keras model."""
-    model_path = "fall_detection_model.h5"
-    try:
-        model = keras_load_model(model_path)
-        print("Model loaded successfully.")
-        return model
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return None
+    model_path = "./fall_detection_model.joblib"  # Update if necessary
+    model = load(model_path)
+    print(f"Model loaded from {model_path}")
+    return model
 
-def preprocess_window(window: np.ndarray) -> np.ndarray:
+model = load_model()
+
+# Global buffer to accumulate live sensor data for a sliding window.
+PREDICTION_WINDOW_SIZE = 135  # Same window size used during training
+prediction_buffer = []
+
+
+#############################
+# Live Prediction Function
+#############################
+def predict_label_live(model):
     """
-    Applies the same offset correction and filtering to a window of sensor data.
-    Expected shape of window: (WINDOW_SIZE, 6)
+    If enough sensor data has been accumulated, extract features
+    from the most recent window and use the model to predict the label.
     """
-    # Copy and ensure float type for calculations
-    processed = window.copy().astype(float)
-    
-    # Convert accelerometer values from raw units to m/s²
-    processed[:, :3] = (processed[:, :3] / ACC_LSB_PER_G) * G_MS2
-    # Convert gyroscope values from raw units to °/s
-    processed[:, 3:] = processed[:, 3:] / GYRO_LSB_PER_DPS
-    
-    # Apply Savitzky-Golay filter on each channel
-    for col in range(processed.shape[1]):
-        processed[:, col] = savgol_filter(processed[:, col], WINDOW_LENGTH_FILTER, POLY_ORDER)
-    return processed
-
-def predict_label(model=None, new_data=None):
-    """
-    Processes incoming sensor data sample-by-sample.
-    Applies conversion and filtering to the sliding window before prediction.
-    
-    new_data: dictionary containing one sensor sample with keys matching SENSOR_COLS.
-    """
-    global sensor_data_buffer
-    if model is None or new_data is None:
-        return 0
-
-    try:
-        # Extract sensor values from the incoming JSON data.
-        sample = [float(new_data[col]) for col in SENSOR_COLS]
-    except KeyError:
-        print("Incoming data does not have the required sensor fields.")
-        return 0
-
-    # Append the new sample to the global buffer
-    sensor_data_buffer.append(sample)
-
-    # Only predict once we have accumulated at least WINDOW_SIZE samples
-    if len(sensor_data_buffer) >= WINDOW_SIZE:
-        # Use the most recent WINDOW_SIZE samples
-        window = np.array(sensor_data_buffer[-WINDOW_SIZE:])
-        # Apply offset correction and filtering
-        processed_window = preprocess_window(window)
-        # Reshape to match model input: (1, WINDOW_SIZE, number_of_features)
-        input_data = processed_window.reshape((1, WINDOW_SIZE, len(SENSOR_COLS)))
-        prediction = model.predict(input_data)
-        # Extract predicted label from softmax output
-        label = int(np.argmax(prediction, axis=1)[0])
+    if len(prediction_buffer) >= PREDICTION_WINDOW_SIZE:
+        # Use the most recent window of data
+        window_data = pd.DataFrame(prediction_buffer[-PREDICTION_WINDOW_SIZE:])
+        features = extract_features(window_data)
+        # Convert features to the format expected by the model (2D array)
+        feature_vector = np.array(list(features.values())).reshape(1, -1)
+        label = model.predict(feature_vector)[0]
         return label
-    else:
-        return None
+    return None
 
-# ------------------------------------------------------------------
 
+#############################
+# WebSocket Communication
+#############################
 class WebSocketManager:
     def __init__(self):
         self.active_connections = set()
@@ -153,11 +111,15 @@ class WebSocketManager:
                 self.disconnect(connection)
 
 websocket_manager = WebSocketManager()
-model = load_model()  # Load the model when the server starts
 
+
+#############################
+# API Endpoints
+#############################
 @app.get("/")
 async def get():
     return HTMLResponse(html)
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -166,23 +128,29 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             json_data = json.loads(data)
-            # Add a timestamp for logging
+            # Add a timestamp for logging purposes
             json_data["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Log the data to CSV periodically
             data_processor.add_data(json_data)
             if len(data_processor.data_buffer) >= 100:
                 data_processor.save_to_csv()
-
-            # Process the new sensor sample and predict when enough data has accumulated.
-            label = predict_label(model, json_data)
-            if label is not None:
-                json_data["label"] = label
+            
+            # Append the new reading to the prediction buffer
+            prediction_buffer.append(json_data)
+            
+            # Make a prediction if a full window is available
+            label = predict_label_live(model)
+            if label is None:
+                json_data["label"] = "insufficient data"
             else:
-                json_data["label"] = "Waiting for enough data..."
+                json_data["label"] = label
 
             print(json_data)
             await websocket_manager.broadcast_message(json.dumps(json_data))
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
