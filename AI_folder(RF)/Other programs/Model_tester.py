@@ -65,7 +65,7 @@ def extract_features(window_data):
     
     return features
 
-def process_data_with_windows(data, window_size=125):
+def process_data_with_windows(data, window_size=10):
     """Process data using sliding windows with 50% overlap.
     
     The window’s center index is stored for plotting purposes.
