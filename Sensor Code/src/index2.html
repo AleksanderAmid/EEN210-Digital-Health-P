@@ -1,0 +1,301 @@
+<html> <head> <title>Fall Detection</title> <!-- Include Chart.js from a CDN --> <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <style> /* Style for the message log area */ #messages { overflow-y: scroll; height: 90vh; width: 60vw; list-style-type: none; padding: 0; } /* Optional styling for the canvas elements */ canvas { margin-top: 20px; border: 1px solid #ccc; } /* Styling for FHIR data sections */ #fhirData { margin-top: 20px; padding: 10px; border-top: 2px solid #000; } #fhirData h2, #fhirData h3 { margin: 10px 0; } #fhirData ul { list-style-type: none; padding: 0; } /* Style for simulation button */ #simulateData { margin: 10px; padding: 8px 16px; font-size: 16px; } </style> </head> <body> <h1>Real-time Data Collection</h1> <button id="closeButton">Close Connection</button> <!-- Button to simulate data --> <button id="simulateData">Simulate Data</button> <ul id="messages"></ul>
+    php-template
+    Copy
+    <!-- Canvas for Acceleration Data -->
+    <canvas id="accChart" width="600" height="300"></canvas>
+    <!-- Canvas for Gyroscope Data -->
+    <canvas id="gyroChart" width="600" height="300"></canvas>
+    
+    <!-- Section for FHIR Data -->
+    <div id="fhirData">
+      <h2>FHIR Data</h2>
+      <div id="patientInfo">
+        <h3>Patient Information</h3>
+        <ul id="patientDetails"></ul>
+      </div>
+      <div id="heartRateInfo">
+        <h3>Heart Rate Observation</h3>
+        <ul id="heartRateDetails"></ul>
+      </div>
+      <div id="bloodPressureInfo">
+        <h3>Blood Pressure</h3>
+        <ul id="bloodPressureDetails"></ul>
+      </div>
+      <div id="bmiInfo">
+        <h3>BMI</h3>
+        <ul id="bmiDetails"></ul>
+      </div>
+      <div id="riskAssessmentInfo">
+        <h3>Fall Risk Assessment</h3>
+        <ul id="riskAssessmentDetails"></ul>
+      </div>
+    </div>
+    
+    <script>
+      // Change the IP address based on your current wifi/ip address
+      var ipAddress = "your_IP_Address";
+      var ws = new WebSocket("ws://" + ipAddress + ":8000/ws");
+      var pointIndex = 0; // for chart x-axis
+      
+      // Setup the acceleration chart
+      var ctxAcc = document.getElementById('accChart').getContext('2d');
+      var accChart = new Chart(ctxAcc, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            { label: 'Acc X', data: [], borderColor: 'rgba(255, 99, 132, 1)', fill: false, tension: 0.1 },
+            { label: 'Acc Y', data: [], borderColor: 'rgba(54, 162, 235, 1)', fill: false, tension: 0.1 },
+            { label: 'Acc Z', data: [], borderColor: 'rgba(75, 192, 192, 1)', fill: false, tension: 0.1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Data Point' } },
+            y: { title: { display: true, text: 'Acceleration' } }
+          }
+        }
+      });
+      
+      // Setup the gyroscope chart
+      var ctxGyro = document.getElementById('gyroChart').getContext('2d');
+      var gyroChart = new Chart(ctxGyro, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            { label: 'Gyro X', data: [], borderColor: 'rgba(153, 102, 255, 1)', fill: false, tension: 0.1 },
+            { label: 'Gyro Y', data: [], borderColor: 'rgba(255, 159, 64, 1)', fill: false, tension: 0.1 },
+            { label: 'Gyro Z', data: [], borderColor: 'rgba(255, 205, 86, 1)', fill: false, tension: 0.1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Data Point' } },
+            y: { title: { display: true, text: 'Gyroscope' } }
+          }
+        }
+      });
+      
+      // Utility: calculate age from birth date
+      function calculateAge(birthDateString) {
+        var birthDate = new Date(birthDateString);
+        var diff = Date.now() - birthDate.getTime();
+        var ageDt = new Date(diff); 
+        return Math.abs(ageDt.getUTCFullYear() - 1970);
+      }
+      
+      // Fetch fall-related data for a specific patient using their ID
+      function fetchFallRelatedData(patient) {
+        // Display patient info
+        var patientDetails = document.getElementById('patientDetails');
+        patientDetails.innerHTML = "";
+        let name = "N/A";
+        if(patient.name && patient.name.length > 0) {
+          const pName = patient.name[0];
+          name = (pName.given ? pName.given.join(" ") : "") + " " + (pName.family || "");
+        }
+        var age = patient.birthDate ? calculateAge(patient.birthDate) : "N/A";
+        patientDetails.innerHTML += "<li><strong>Name:</strong> " + name + "</li>";
+        patientDetails.innerHTML += "<li><strong>Gender:</strong> " + (patient.gender || "N/A") + "</li>";
+        patientDetails.innerHTML += "<li><strong>Birth Date:</strong> " + (patient.birthDate || "N/A") + " (Age: " + age + ")</li>";
+        
+        // Fetch Heart Rate observation using LOINC code 8867-4
+        fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=8867-4&_format=json')
+          .then(response => response.json())
+          .then(data => {
+            const heartRateDetails = document.getElementById('heartRateDetails');
+            heartRateDetails.innerHTML = "";
+            if(data.entry && data.entry.length > 0) {
+              var hrObs = data.entry[0].resource;
+              let hrValue = "No value provided";
+              if(hrObs.valueQuantity) {
+                hrValue = hrObs.valueQuantity.value + " " + (hrObs.valueQuantity.unit || "bpm");
+              } else if(hrObs.valueString) {
+                hrValue = hrObs.valueString;
+              }
+              let codeText = (hrObs.code && hrObs.code.text) ? hrObs.code.text : "Heart Rate";
+              heartRateDetails.innerHTML += "<li><strong>" + codeText + ":</strong> " + hrValue + "</li>";
+            } else {
+              heartRateDetails.innerHTML += "<li>No heart rate data available</li>";
+            }
+          })
+          .catch(error => console.error("Error fetching heart rate data:", error));
+          
+        // Fetch Blood Pressure observations separately
+        
+        const bpDetails = document.getElementById('bloodPressureDetails');
+        bpDetails.innerHTML = "";
+        // Fetch Systolic Blood Pressure using LOINC code 8480-6
+        fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=8480-6&_format=json')
+          .then(response => response.json())
+          .then(data => {
+            let systolicValue = "No systolic BP data available";
+            if(data.entry && data.entry.length > 0) {
+              let systolicObs = data.entry[0].resource;
+              if(systolicObs.valueQuantity) {
+                systolicValue = systolicObs.valueQuantity.value + " " + (systolicObs.valueQuantity.unit || "");
+              }
+            }
+            bpDetails.innerHTML += "<li><strong>Systolic Blood Pressure:</strong> " + systolicValue + "</li>";
+          })
+          .catch(error => {
+            bpDetails.innerHTML += "<li>Error fetching systolic blood pressure data</li>";
+            console.error("Error fetching systolic BP:", error);
+          });
+          
+        // Fetch Diastolic Blood Pressure using LOINC code 8462-4
+        fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=8462-4&_format=json')
+          .then(response => response.json())
+          .then(data => {
+            let diastolicValue = "No diastolic BP data available";
+            if(data.entry && data.entry.length > 0) {
+              let diastolicObs = data.entry[0].resource;
+              if(diastolicObs.valueQuantity) {
+                diastolicValue = diastolicObs.valueQuantity.value + " " + (diastolicObs.valueQuantity.unit || "");
+              }
+            }
+            bpDetails.innerHTML += "<li><strong>Diastolic Blood Pressure:</strong> " + diastolicValue + "</li>";
+          })
+          .catch(error => {
+            bpDetails.innerHTML += "<li>Error fetching diastolic blood pressure data</li>";
+            console.error("Error fetching diastolic BP:", error);
+          });
+        
+        // Fetch BMI using LOINC code 39156-5
+        fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=39156-5&_format=json')
+          .then(response => response.json())
+          .then(data => {
+            const bmiDetails = document.getElementById('bmiDetails');
+            bmiDetails.innerHTML = "";
+            if(data.entry && data.entry.length > 0) {
+              var bmiObs = data.entry[0].resource;
+              let bmiValue = "No value provided";
+              if(bmiObs.valueQuantity) {
+                bmiValue = bmiObs.valueQuantity.value + " " + (bmiObs.valueQuantity.unit || "");
+              }
+              bmiDetails.innerHTML += "<li><strong>BMI:</strong> " + bmiValue + "</li>";
+            } else {
+              bmiDetails.innerHTML += "<li>No BMI data available</li>";
+            }
+          })
+          .catch(error => console.error("Error fetching BMI data:", error));
+          
+        // Fetch RiskAssessment for fall risk using SNOMED CT code 271327008
+        fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/RiskAssessment?patient=' + patient.id + '&code=http://snomed.info/sct|271327008&_format=json')
+          .then(response => response.json())
+          .then(data => {
+            const riskAssessmentDetails = document.getElementById('riskAssessmentDetails');
+            riskAssessmentDetails.innerHTML = "";
+            if(data.entry && data.entry.length > 0) {
+              var risk = data.entry[0].resource;
+              let outcome = "No outcome provided";
+              if(risk.prediction && risk.prediction.length > 0 && risk.prediction[0].outcome) {
+                outcome = risk.prediction[0].outcome.text || outcome;
+              }
+              riskAssessmentDetails.innerHTML += "<li><strong>Fall Risk:</strong> " + outcome + "</li>";
+            } else {
+              riskAssessmentDetails.innerHTML += "<li>No fall risk assessment data available</li>";
+            }
+          })
+          .catch(error => console.error("Error fetching risk assessments:", error));
+      }
+      
+      // For simulation, fetch a random patient from the Patient endpoint then get fall-related data.
+      function fetchPatientAndFallData() {
+        fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Patient?_format=json')
+          .then(response => response.json())
+          .then(data => {
+            if(data.entry && data.entry.length > 0) {
+              const randomIndex = Math.floor(Math.random() * data.entry.length);
+              const patient = data.entry[randomIndex].resource;
+              fetchFallRelatedData(patient);
+            }
+          })
+          .catch(error => console.error("Error fetching patient data:", error));
+      }
+      
+      // WebSocket handling (if using live sensor data)
+      ws.onopen = function(event) {
+        console.log("WebSocket state:", ws.readyState);
+      };
+      ws.onmessage = function(event) {
+        console.log("Received data:", event.data);
+        var messages = document.getElementById('messages');
+        var message = document.createElement('li');
+        message.textContent = event.data;
+        messages.appendChild(message);
+        messages.scrollTop = messages.scrollHeight;
+        
+        try {
+          var json_data = JSON.parse(event.data);
+          pointIndex++;
+          accChart.data.labels.push(pointIndex);
+          accChart.data.datasets[0].data.push(json_data.acceleration_x);
+          accChart.data.datasets[1].data.push(json_data.acceleration_y);
+          accChart.data.datasets[2].data.push(json_data.acceleration_z);
+          accChart.update();
+          
+          gyroChart.data.labels.push(pointIndex);
+          gyroChart.data.datasets[0].data.push(json_data.gyroscope_x);
+          gyroChart.data.datasets[1].data.push(json_data.gyroscope_y);
+          gyroChart.data.datasets[2].data.push(json_data.gyroscope_z);
+          gyroChart.update();
+          
+          // When a fall is detected, fetch fall-related FHIR data for a patient.
+          if(json_data.fallDetected) {
+            fetchPatientAndFallData();
+          }
+        } catch (e) {
+          console.error("Error parsing JSON data:", e);
+        }
+      };
+      ws.onclose = function(event) {
+        console.log("WebSocket closed:", event);
+      };
+      
+      // Close connection button
+      var closeButton = document.getElementById('closeButton');
+      closeButton.addEventListener('click', function() {
+        ws.close();
+        console.log("Connection Closed");
+      });
+      
+      // Simulate sensor data (which triggers fallDetected)
+      document.getElementById('simulateData').addEventListener('click', function() {
+        var sampleData = {
+          acceleration_x: (Math.random() * 2 - 1).toFixed(2),
+          acceleration_y: (Math.random() * 2 - 1).toFixed(2),
+          acceleration_z: (Math.random() * 2 - 1).toFixed(2),
+          gyroscope_x: (Math.random() * 2 - 1).toFixed(2),
+          gyroscope_y: (Math.random() * 2 - 1).toFixed(2),
+          gyroscope_z: (Math.random() * 2 - 1).toFixed(2),
+          fallDetected: true
+        };
+        var messages = document.getElementById('messages');
+        var message = document.createElement('li');
+        message.textContent = JSON.stringify(sampleData);
+        messages.appendChild(message);
+        messages.scrollTop = messages.scrollHeight;
+        
+        pointIndex++;
+        accChart.data.labels.push(pointIndex);
+        accChart.data.datasets[0].data.push(sampleData.acceleration_x);
+        accChart.data.datasets[1].data.push(sampleData.acceleration_y);
+        accChart.data.datasets[2].data.push(sampleData.acceleration_z);
+        accChart.update();
+        
+        gyroChart.data.labels.push(pointIndex);
+        gyroChart.data.datasets[0].data.push(sampleData.gyroscope_x);
+        gyroChart.data.datasets[1].data.push(sampleData.gyroscope_y);
+        gyroChart.data.datasets[2].data.push(sampleData.gyroscope_z);
+        gyroChart.update();
+        
+        if(sampleData.fallDetected) {
+          fetchPatientAndFallData();
+        }
+      });
+    </script>
+    </body> </html>
