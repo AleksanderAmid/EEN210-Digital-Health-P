@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fall Detection</title>
+  <style>
+    /* Container to hold both message log and FHIR data side-by-side */
+    #container {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    /* Style for the message log area */
+    #messages {
+      overflow-y: scroll;
+      height: 90vh;
+      width: 45vw;
+      list-style-type: none;
+      padding: 0;
+      margin: 10px;
+    }
+    /* Styling for FHIR data sections */
+    #fhirData {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #000;
+      width: 45vw;
+      margin: 10px;
+    }
+    #fhirData h2,
+    #fhirData h3 {
+      margin: 10px 0;
+    }
+    #fhirData ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h1>Real-time Data Collection</h1>
+  <button id="closeButton">Close Connection</button>
+
+  <div id="container">
+    <ul id="messages"></ul>
+    <div id="fhirData">
+      <h2>FHIR Data</h2>
+      <div id="patientInfo">
+        <h3>Patient Information</h3>
+        <ul id="patientDetails"></ul>
+      </div>
+      <div id="conditionInfo">
+        <h3>Conditions</h3>
+        <ul id="conditionsDetails"></ul>
+      </div>
+      <div id="medicationInfo">
+        <h3>Medications</h3>
+        <ul id="medicationsDetails"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Change the IP address as needed
+    var ipAddress = "192.168.92.120";
+    var ws = new WebSocket("ws://" + ipAddress + ":8000/ws");
+
+    var messageCount = 0;
+    var lastFallDetectionTime = 0;  // New variable to throttle fall detection
+    var currentPatientName = "N/A";
+    var currentPatientId = "N/A";
+
+    function calculateAge(birthDateString) {
+      var birthDate = new Date(birthDateString);
+      var diff = Date.now() - birthDate.getTime();
+      var ageDt = new Date(diff);
+      return Math.abs(ageDt.getUTCFullYear() - 1970);
+    }
+
+    function fetchFallRelatedData(patient) {
+      currentPatientId = patient.id || "N/A";
+      var patientDetails = document.getElementById('patientDetails');
+      patientDetails.innerHTML = "";
+      var name = "N/A";
+      if (patient.name && patient.name.length > 0) {
+        var pName = patient.name[0];
+        name = (pName.given ? pName.given.join(" ") : "") + " " + (pName.family || "");
+      }
+      currentPatientName = name;
+      var age = patient.birthDate ? calculateAge(patient.birthDate) : "N/A";
+      patientDetails.innerHTML += "<li><strong>Name:</strong> " + name + "</li>";
+      patientDetails.innerHTML += "<li><strong>Patient ID:</strong> " + currentPatientId + "</li>";
+      patientDetails.innerHTML += "<li><strong>Gender:</strong> " + (patient.gender || "N/A") + "</li>";
+      patientDetails.innerHTML += "<li><strong>Birth Date:</strong> " + (patient.birthDate || "N/A") + " (Age: " + age + ")</li>";
+
+      fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=8867-4&_format=json')
+        .then(response => response.json())
+        .then(data => {
+          if (data.entry && data.entry.length > 0) {
+            var hrObs = data.entry[0].resource;
+            var hrValue = "No value provided";
+            if (hrObs.valueQuantity) {
+              hrValue = hrObs.valueQuantity.value + " " + (hrObs.valueQuantity.unit || "bpm");
+            }
+            var codeText = (hrObs.code && hrObs.code.text) ? hrObs.code.text : "Heart Rate";
+            patientDetails.innerHTML += "<li><strong>" + codeText + ":</strong> " + hrValue + "</li>";
+          } else {
+            patientDetails.innerHTML += "<li>No heart rate data available</li>";
+          }
+        })
+        .catch(error => console.error("Error fetching heart rate data:", error));
+
+      fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=39156-5&_format=json')
+        .then(response => response.json())
+        .then(data => {
+          if (data.entry && data.entry.length > 0) {
+            var bmiObs = data.entry[0].resource;
+            var bmiValue = "No value provided";
+            if (bmiObs.valueQuantity) {
+              bmiValue = bmiObs.valueQuantity.value + " " + (bmiObs.valueQuantity.unit || "");
+            }
+            patientDetails.innerHTML += "<li><strong>BMI:</strong> " + bmiValue + "</li>";
+          } else {
+            patientDetails.innerHTML += "<li>No BMI data available</li>";
+          }
+        })
+        .catch(error => console.error("Error fetching BMI data:", error));
+
+      fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Condition?_format=json')
+        .then(response => response.json())
+        .then(data => {
+          var conditionsDetails = document.getElementById('conditionsDetails');
+          conditionsDetails.innerHTML = "";
+          var found = false;
+          if (data.entry && data.entry.length > 0) {
+            data.entry.forEach(entry => {
+              var condition = entry.resource;
+              if (condition.subject && condition.subject.reference && patient.id && condition.subject.reference === ("Patient/" + patient.id)) {
+                found = true;
+                var conditionText = (condition.code && condition.code.coding && condition.code.coding.length > 0 && condition.code.coding[0].display) ? condition.code.coding[0].display : "Unnamed Condition";
+                conditionsDetails.innerHTML += "<li>- " + conditionText + "</li>";
+              }
+            });
+          }
+          if (!found) {
+            conditionsDetails.innerHTML += "<li>- No conditions available</li>";
+          }
+        })
+        .catch(error => console.error("Error fetching conditions:", error));
+
+      fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/MedicationRequest?patient=' + patient.id + '&_format=json')
+        .then(response => response.json())
+        .then(data => {
+          var medicationsDetails = document.getElementById('medicationsDetails');
+          medicationsDetails.innerHTML = "";
+          var foundMeds = false;
+          if (data.entry && data.entry.length > 0) {
+            var medsDisplayed = [];
+            data.entry.forEach(entry => {
+              var medRequest = entry.resource;
+              if (!medRequest.status || medRequest.status === "active") {
+                var medText = (medRequest.medicationCodeableConcept && medRequest.medicationCodeableConcept.text) ? medRequest.medicationCodeableConcept.text : "Medication info not available";
+                if (medsDisplayed.indexOf(medText) === -1) {
+                  medsDisplayed.push(medText);
+                  medicationsDetails.innerHTML += "<li>- " + medText + "</li>";
+                  foundMeds = true;
+                }
+              }
+            });
+          }
+          if (!foundMeds) {
+            medicationsDetails.innerHTML += "<li>- No active medication data available</li>";
+          }
+        })
+        .catch(error => console.error("Error fetching medications:", error));
+    }
+
+    function fetchPatientAndFallData() {
+      return fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Patient?_format=json')
+        .then(response => response.json())
+        .then(data => {
+          if(data.entry && data.entry.length > 0) {
+            var randomIndex = Math.floor(Math.random() * data.entry.length);
+            var patient = data.entry[randomIndex].resource;
+            fetchFallRelatedData(patient);
+            return patient;
+          } else {
+            return null;
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching patient data:", error);
+          return null;
+        });
+    }
+
+    ws.onopen = function(event) {
+      console.log("WebSocket state:", ws.readyState);
+    };
+
+    ws.onmessage = function(event) {
+      messageCount++;
+      if(messageCount % 10 !== 0) {
+        // Process only every 10th window
+        return;
+      }
+      console.log("Received data:", event.data);
+      var messages = document.getElementById('messages');
+      try {
+        var json_data = JSON.parse(event.data);
+        var label = json_data.label;
+        var timestamp = json_data.timestamp;
+        
+        if(label === 1) {
+          var now = Date.now();
+          if(now - lastFallDetectionTime >= 10000) {  // wait at least 10 seconds
+            lastFallDetectionTime = now;
+            fetchPatientAndFallData().then(function(patient) {
+              var pname = patient ? currentPatientName : "N/A";
+              var message = document.createElement('li');
+              message.textContent = "Patient: " + pname + " | Timestamp: " + timestamp + " | Label: fall detected";
+              messages.appendChild(message);
+              messages.scrollTop = messages.scrollHeight;
+            });
+          }
+        } else {
+          var message = document.createElement('li');
+          message.textContent = "Patient: N/A | Timestamp: " + timestamp + " | Label: no fall detected";
+          messages.appendChild(message);
+          messages.scrollTop = messages.scrollHeight;
+        }
+      } catch(e) {
+        console.error("Error parsing JSON data:", e);
+      }
+    };
+
+    ws.onclose = function(event) {
+      console.log("WebSocket closed:", event);
+    };
+
+    document.getElementById('closeButton').addEventListener('click', function() {
+      ws.close();
+      console.log("Connection Closed");
+    });
+  </script>
+</body>
+</html>
