@@ -42,6 +42,36 @@
         padding: 8px 16px;
         font-size: 16px;
       }
+      /* Dark mode styles */
+      body {
+        background-color: #333;
+        color: #fff;
+      }
+      #fhirData {
+        border: 1px solid #eee;
+      }
+      /* Dark mode toggle button */
+      #darkModeToggle {
+        margin: 10px;
+        padding: 8px 16px;
+        font-size: 16px;
+        background-color: #555;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+      /* Light mode styles (applied when dark mode is off) */
+      body.light-mode {
+        background-color: #fff;
+        color: #000;
+      }
+      body.light-mode #fhirData {
+        border: 1px solid #000;
+      }
+      body.light-mode #darkModeToggle {
+        background-color: #eee;
+        color: #000;
+      }
     </style>
   </head>
   <body>
@@ -49,6 +79,10 @@
     <button id="closeButton">Close Connection</button>
     <!-- Button to simulate data -->
     <button id="simulateData">Simulate Data</button>
+    <!-- Add this toggle button next to your simulate button -->
+    <button id="toggleFilter">Show Falls Only</button>
+    <!-- Dark mode toggle button -->
+    <button id="darkModeToggle">Light Mode</button>
 
     <div id="container">
       <ul id="messages"></ul>
@@ -67,9 +101,35 @@
         </div>
         <!-- Medications list now with dashes -->
         <div id="medicationInfo">
-          <h3>Medications</h3>
+          <h3>Active Medications</h3>
           <ul id="medicationsDetails"></ul>
         </div>
+      </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="fallModal" style="
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    ">
+      <div style="
+            background-color: #f00; /* Red background */
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%; /* Reduced width */
+            text-align: center;
+            color: white;
+            font-size: 2em;
+      ">
+        <p>Warning -- Fall detected!</p>
       </div>
     </div>
 
@@ -77,6 +137,7 @@
       // Global variables to store the current patient's ID and Name (for display purposes)
       var currentPatientId = "N/A";
       var currentPatientName = "N/A";
+      var filterFalls = false; // false = show all; true = show falls only
 
       // Change the IP address based on your current wifi/ip address
       var ipAddress = "your_IP_Address";
@@ -90,12 +151,35 @@
         return Math.abs(ageDt.getUTCFullYear() - 1970);
       }
 
+      // Function to apply filtering to the messages list based on fall detection class
+      function applyFilter() {
+        var messages = document.getElementById('messages').children;
+        for (var i = 0; i < messages.length; i++) {
+          // If filtering is enabled, only show list items with the "fall" class.
+          if (filterFalls) {
+            if (!messages[i].classList.contains("fall")) {
+              messages[i].style.display = "none";
+            } else {
+              messages[i].style.display = "block";
+            }
+          } else {
+            messages[i].style.display = "block";
+          }
+        }
+      }
+
+      // Toggle button event listener
+      document.getElementById("toggleFilter").addEventListener("click", function(){
+        filterFalls = !filterFalls;
+        this.textContent = filterFalls ? "Show All" : "Show Falls Only";
+        applyFilter();
+      });
+
       // Update FHIR display panels with patient data
       function fetchFallRelatedData(patient) {
         // Store current patient id globally for FHIR display panels only
         currentPatientId = patient.id || "N/A";
 
-        // Display patient info (including heart rate, BMI and patient ID)
         var patientDetails = document.getElementById('patientDetails');
         patientDetails.innerHTML = "";
         let name = "N/A";
@@ -106,12 +190,16 @@
         currentPatientName = name; // Store the patient name globally
 
         var age = patient.birthDate ? calculateAge(patient.birthDate) : "N/A";
+        let ageDisplay = "<strong>Birth Date:</strong> " + (patient.birthDate || "N/A") + " (Age: " + age + ")";
+        if (age !== "N/A" && age >= 65) {
+          ageDisplay = "<span style='color:red'>" + ageDisplay + "</span>";
+        }
         patientDetails.innerHTML += "<li><strong>Name:</strong> " + name + "</li>";
         patientDetails.innerHTML += "<li><strong>Patient ID:</strong> " + currentPatientId + "</li>";
         patientDetails.innerHTML += "<li><strong>Gender:</strong> " + (patient.gender || "N/A") + "</li>";
-        patientDetails.innerHTML += "<li><strong>Birth Date:</strong> " + (patient.birthDate || "N/A") + " (Age: " + age + ")</li>";
+        patientDetails.innerHTML += "<li>" + ageDisplay + "</li>";
 
-        // Fetch Heart Rate observation (LOINC code 8867-4) and append into patientDetails
+        // Fetch Heart Rate observation (LOINC code 8867-4)
         fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=8867-4&_format=json')
           .then(response => response.json())
           .then(data => {
@@ -131,17 +219,23 @@
           })
           .catch(error => console.error("Error fetching heart rate data:", error));
 
-        // Fetch BMI (LOINC code 39156-5) and append into patientDetails
+        // Fetch BMI (LOINC code 39156-5)
         fetch('https://fhirsandbox.healthit.gov/open/r4/fhir/Observation?patient=' + patient.id + '&code=39156-5&_format=json')
           .then(response => response.json())
           .then(data => {
             if (data.entry && data.entry.length > 0) {
               var bmiObs = data.entry[0].resource;
               let bmiValue = "No value provided";
+              let bmiNumber = 0;
               if (bmiObs.valueQuantity) {
+                bmiNumber = Number(bmiObs.valueQuantity.value);
                 bmiValue = bmiObs.valueQuantity.value + " " + (bmiObs.valueQuantity.unit || "");
               }
-              patientDetails.innerHTML += "<li><strong>BMI:</strong> " + bmiValue + "</li>";
+              let bmiDisplay = "<strong>BMI:</strong> " + bmiValue;
+              if (bmiNumber >= 30) {
+                bmiDisplay = "<span style='color:red'>" + bmiDisplay + "</span>";
+              }
+              patientDetails.innerHTML += "<li>" + bmiDisplay + "</li>";
             } else {
               patientDetails.innerHTML += "<li>No BMI data available</li>";
             }
@@ -222,7 +316,6 @@
             if (data.entry && data.entry.length > 0) {
               const randomIndex = Math.floor(Math.random() * data.entry.length);
               const patient = data.entry[randomIndex].resource;
-              // Call fetchFallRelatedData to update the FHIR panels.
               fetchFallRelatedData(patient);
               return patient;
             } else {
@@ -242,29 +335,35 @@
 
       ws.onmessage = function(event) {
         console.log("Received data:", event.data);
-        var messages = document.getElementById('messages');
+        var messagesContainer = document.getElementById('messages');
         try {
           var json_data = JSON.parse(event.data);
-          // Determine label based on fallDetected flag
           var label = json_data.fallDetected ? 1 : 0;
           var labelText = label === 1 ? "fall detected" : "no fall detected";
-          // Get timestamp of data point reception.
           var timestamp = new Date().toLocaleString();
+          var message = document.createElement('li');
 
-          // If a fall is detected, fetch patient data to get the name; otherwise use "N/A"
+          // Mark the message with a class based on fall detection.
           if (json_data.fallDetected) {
-            fetchPatientAndFallData().then(function(patient) {
-              var pname = patient ? currentPatientName : "N/A";
-              var message = document.createElement('li');
-              message.textContent = "Patient: " + pname + " | Timestamp: " + timestamp + " | Label: " + labelText;
-              messages.appendChild(message);
-              messages.scrollTop = messages.scrollHeight;
-            });
+            message.classList.add("fall");
+            message.style.color = "red";
           } else {
-            var message = document.createElement('li');
-            message.textContent = "Patient: N/A | Timestamp: " + timestamp + " | Label: " + labelText;
-            messages.appendChild(message);
-            messages.scrollTop = messages.scrollHeight;
+            message.classList.add("noFall");
+          }
+          
+          message.textContent = "Patient: " + (json_data.fallDetected ? currentPatientName : "N/A") +
+                                " | Timestamp: " + timestamp + " | Label: " + labelText;
+          messagesContainer.appendChild(message);
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          applyFilter();  // Apply filter after appending a new message.
+
+          // Show the modal if a fall is detected
+          if (json_data.fallDetected) {
+            document.getElementById('fallModal').style.display = "block";
+            // Hide the modal after 3 seconds
+            setTimeout(function() {
+              document.getElementById('fallModal').style.display = "none";
+            }, 3000);
           }
         } catch (e) {
           console.error("Error parsing JSON data:", e);
@@ -291,25 +390,43 @@
           gyroscope_x: (Math.random() * 2 - 1).toFixed(2),
           gyroscope_y: (Math.random() * 2 - 1).toFixed(2),
           gyroscope_z: (Math.random() < 0.5) ? (Math.random() * 2 - 1).toFixed(2) : "N/A",
-          fallDetected: Math.random() < 0.5  // random true/false for simulation
+          fallDetected: Math.random() < 0.5
         };
 
-        var messages = document.getElementById('messages');
+        var messagesContainer = document.getElementById('messages');
         var timestamp = new Date().toLocaleString();
+        var message = document.createElement('li');
+
         if (sampleData.fallDetected) {
           fetchPatientAndFallData().then(function(patient) {
-            var pname = patient ? currentPatientName : "N/A";
-            var message = document.createElement('li');
-            message.textContent = "Patient: " + pname + " | Timestamp: " + timestamp + " | Label: fall detected";
-            messages.appendChild(message);
-            messages.scrollTop = messages.scrollHeight;
+            message.classList.add("fall");
+            message.style.color = "red";
+            message.textContent = "Patient: " + (patient ? currentPatientName : "N/A") +
+                                  " | Timestamp: " + timestamp + " | Label: fall detected";
+            messagesContainer.appendChild(message);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            applyFilter();
+
+            // Show the modal if a fall is detected
+            document.getElementById('fallModal').style.display = "block";
+            // Hide the modal after 3 seconds
+            setTimeout(function() {
+              document.getElementById('fallModal').style.display = "none";
+            }, 3000);
           });
         } else {
-          var message = document.createElement('li');
+          message.classList.add("noFall");
           message.textContent = "Patient: N/A | Timestamp: " + timestamp + " | Label: no fall detected";
-          messages.appendChild(message);
-          messages.scrollTop = messages.scrollHeight;
+          messagesContainer.appendChild(message);
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          applyFilter();
         }
+      });
+
+      // Dark mode toggle functionality
+      document.getElementById('darkModeToggle').addEventListener('click', function() {
+        document.body.classList.toggle('light-mode');
+        this.textContent = document.body.classList.contains('light-mode') ? 'Dark Mode' : 'Light Mode';
       });
     </script>
   </body>
