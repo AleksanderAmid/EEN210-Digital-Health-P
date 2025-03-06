@@ -10,7 +10,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 
-def load_data(title="Select CSV file"):
+
+# VANLIGA
+'''def load_data(title="Select CSV file"):
     root = tk.Tk()
     root.withdraw()
     
@@ -23,7 +25,13 @@ def load_data(title="Select CSV file"):
         print("No data file selected. Exiting...")
         return None
         
-    return pd.read_csv(file_path)
+    return pd.read_csv(file_path)'''
+
+def load_data(filepath=None):
+    if filepath is None:
+        print("No CSV file path provided. Exiting...")
+        return None
+    return pd.read_csv(filepath)
 
 def calculate_magnitudes(window_data):
     """Calculate magnitudes for accelerometer and gyroscope data"""

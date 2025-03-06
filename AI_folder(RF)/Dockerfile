@@ -16,14 +16,25 @@ ENV PATH=/opt/conda/bin:$PATH
 RUN conda update -n base -c defaults conda -y && \
     conda clean --all -y
 
-# Create a new conda environment 'gpu_env' with required packages
 # Install mamba in the base image
 RUN conda install -n base -c conda-forge mamba -y
 
 # Create a new environment and install dependencies using mamba
-RUN mamba create -n gpu_env python=3.9 -y && \
-    mamba install -n gpu_env -c rapidsai -c nvidia -c conda-forge rapids=23.12 cudf cuml cupy scikit-learn pandas matplotlib seaborn -y
+RUN mamba create -n gpu_env python=3.10 -y && \
+    mamba install -n gpu_env -c rapidsai -c nvidia -c conda-forge cudf cuml cupy scikit-learn pandas matplotlib seaborn -y
 
-    CMD ["/bin/bash"]
+# Add auto-activation of gpu_env to .bashrc
+RUN echo "source /opt/conda/etc/profile.d/conda.sh" >> /root/.bashrc && \
+    echo "conda activate gpu_env" >> /root/.bashrc
 
+# Copy the Python scripts into the container
+COPY "AI_folder(RF)/GPU_RUNNER_DOCKER.py" /app/GPU_RUNNER_DOCKER.py
+COPY "AI_folder(RF)/RF_MODEL_GPU.py" /app/RF_MODEL_GPU.py
 
+# Create a directory for the CSV file and copy it into the container.
+RUN mkdir -p /app/data
+COPY ["LabeledData/Old label/Merged Data/Random_Merged_Data_12-06-30.csv", "/app/data/Random_Merged_Data_12-06-30.csv"]
+WORKDIR /app
+
+# Start container with interactive bash shell (which now auto-activates gpu_env)
+CMD ["bash", "-c", "exec bash"]
