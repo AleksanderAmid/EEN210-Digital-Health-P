@@ -12,6 +12,7 @@ from joblib import dump
 from RF_MODEL_GPU import load_data
 import gc
 
+#--------------------
 def balance_training_data(X, y, random_state=42):
     """
     Balances the training data by oversampling the minority class to match the majority class count.
@@ -54,7 +55,7 @@ def evaluate_configuration(X_train, X_test, y_train, y_test, params):
     X_test = cudf.DataFrame(X_test)
     y_test = cudf.Series(y_test)
     
-    # Balance the training data to mimic class_weight="balanced"
+    # Balance the training data to mimic class_weight="balanced"------------------
     X_train, y_train = balance_training_data(X_train, y_train, random_state=42)
     
     # Set random_state for reproducibility and use the given hyperparameters.

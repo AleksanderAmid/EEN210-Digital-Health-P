@@ -9,6 +9,7 @@ from GPU_RUNNER import process_windows_vectorized
 import gc
 import numpy as np
 from datetime import datetime
+from RF_MODEL import load_data
 
 def cluster_events(timestamps, labels, gap_tolerance=2.0):
     """
@@ -83,6 +84,7 @@ def evaluate_cluster_based(X_train, X_test, y_train, y_test, params, timestamps)
     recall = TP / (TP + FN) * 100 if (TP + FN) > 0 else 0
     f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
     
+    
     return {'event_precision': precision, 'event_recall': recall, 'event_f1': f1, 'true_events': len(true_events), 'predicted_events': len(predicted_events)}
 
 def test_all_parameters():
@@ -93,7 +95,7 @@ def test_all_parameters():
     os.system("sudo nvidia-smi -pl 75")
     os.system("sudo nvidia-smi --auto-boost-default=0")
     
-    data = process_windows_vectorized(load_data("Select training data CSV file"))
+    data = load_data("Select training data CSV file")
     data = cudf.DataFrame(data) if not isinstance(data, cudf.DataFrame) else data
     
     result_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Model_Result")

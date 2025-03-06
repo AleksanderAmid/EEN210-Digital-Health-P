@@ -20,12 +20,12 @@ def process_windows_vectorized(data, window_size, overlap_percent):
     """
     # Ensure data is sorted by timestamp.
     data = data.sort_values('timestamp')
-    step_size = int((window_size * (1 - overlap_percent / 100))/3)
+    step_size = int((window_size * (1 - overlap_percent / 100)))
     n_rows = len(data)
     
     if n_rows < window_size:
         return cudf.DataFrame()  # Not enough data
-    
+    print(n_rows, window_size, step_size)
     num_windows = (n_rows - window_size) // step_size + 1
 
     # Define sensor columns.
@@ -83,6 +83,12 @@ def process_windows_vectorized(data, window_size, overlap_percent):
     import pandas as pd
     pd_features = {k: cp.asnumpy(v) for k, v in feature_dict.items()}
     features_df = pd.DataFrame(pd_features)
+
+    # Generate an aggregated timestamp for each window.
+    # Here we take the timestamp of the first row in each window.
+    original_timestamps = data['timestamp'].to_pandas().reset_index(drop=True)
+    aggregated_timestamps = original_timestamps.iloc[[i * step_size for i in range(num_windows)]].reset_index(drop=True)
+    features_df['timestamp'] = aggregated_timestamps.values
     
     # Return a cuDF DataFrame.
     return cudf.DataFrame.from_pandas(features_df)
