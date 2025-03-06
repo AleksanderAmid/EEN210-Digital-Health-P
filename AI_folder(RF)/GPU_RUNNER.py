@@ -20,7 +20,7 @@ def process_windows_vectorized(data, window_size, overlap_percent):
     """
     # Ensure data is sorted by timestamp.
     data = data.sort_values('timestamp')
-    step_size = int(window_size * (1 - overlap_percent / 100))
+    step_size = int((window_size * (1 - overlap_percent / 100))/3)
     n_rows = len(data)
     
     if n_rows < window_size:

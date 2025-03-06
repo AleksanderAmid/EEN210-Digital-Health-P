@@ -162,7 +162,7 @@ def train_model():
     # Create and train the Random Forest model
     print("Training Random Forest model...")
     rf_model = RandomForestClassifier(
-        n_estimators=500,
+        n_estimators=200,
         max_depth=300,
         random_state=42,
         class_weight='balanced'  # Handle class imbalance

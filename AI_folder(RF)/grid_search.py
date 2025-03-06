@@ -12,7 +12,36 @@ from joblib import dump
 from RF_MODEL_GPU import load_data
 import gc
 
-
+def balance_training_data(X, y, random_state=42):
+    """
+    Balances the training data by oversampling the minority class to match the majority class count.
+    This mimics scikit-learn's class_weight='balanced' behavior.
+    """
+    # Combine X and y into one DataFrame
+    df = X.copy()
+    df['label'] = y
+    # Compute class counts and convert to pandas Series for iteration
+    counts = df['label'].value_counts().to_pandas()
+    max_count = counts.max()
+    balanced_df_list = []
+    
+    for label, count in counts.items():
+        label_df = df[df['label'] == label]
+        # Oversample if needed
+        if count < max_count:
+            label_df_balanced = label_df.sample(n=int(max_count), replace=True, random_state=random_state)
+        else:
+            label_df_balanced = label_df
+        balanced_df_list.append(label_df_balanced)
+    
+    balanced_df = cudf.concat(balanced_df_list)
+    # Shuffle the balanced DataFrame
+    balanced_df = balanced_df.sample(frac=1, random_state=random_state)
+    
+    # Separate features and label
+    y_balanced = balanced_df['label']
+    X_balanced = balanced_df.drop('label', axis=1)
+    return X_balanced, y_balanced
 
 def evaluate_configuration(X_train, X_test, y_train, y_test, params):
     """
@@ -25,14 +54,19 @@ def evaluate_configuration(X_train, X_test, y_train, y_test, params):
     X_test = cudf.DataFrame(X_test)
     y_test = cudf.Series(y_test)
     
+    # Balance the training data to mimic class_weight="balanced"
+    X_train, y_train = balance_training_data(X_train, y_train, random_state=42)
+    
+    # Set random_state for reproducibility and use the given hyperparameters.
     model = cuRF(
         n_estimators=params['n_estimators'],
         max_depth=params['max_depth'],
         max_features="sqrt",
         n_bins=16,
         bootstrap=True,
-        n_streams=8,
-        split_criterion="gini"
+        n_streams=1,
+        split_criterion="gini",
+        random_state=42
     )
 
     model.fit(X_train, y_train)
@@ -65,7 +99,6 @@ def evaluate_configuration(X_train, X_test, y_train, y_test, params):
         'fall_accuracy': fall_accuracy * 100
     }
 
-
 def test_all_parameters():
     # Optimize GPU usage by setting persistent mode, power limit, and disabling auto-boost.
     os.system("sudo nvidia-smi -pm 1")  # Enable persistent mode.
@@ -87,10 +120,10 @@ def test_all_parameters():
         data = cudf.DataFrame(data)
     
     # Define parameter combinations to test
-    window_sizes = [10, 20, 30, 40, 50, 60, 70, 80, 100, 110, 120, 130, 145, 150]
-    overlap_sizes = [75,80,90]  # in percentage
-    n_estimators = [300, 400, 500]
-    max_depths = [100, 300, 500]
+    window_sizes = [145, 150,160,170]
+    overlap_sizes = [25,50,75]  # in percentage
+    n_estimators = [50,75,100,150,200,300]
+    max_depths = [30,50,70,100]
     
     # Store results for all combinations
     all_results = []
