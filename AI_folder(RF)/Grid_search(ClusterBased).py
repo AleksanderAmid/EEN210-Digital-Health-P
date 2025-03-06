@@ -78,12 +78,14 @@ def evaluate_cluster_based(X_train, X_test, y_train, y_test, params, timestamps)
     # Match events and calculate cluster-based metrics
     TP = match_events(true_events, predicted_events)
     FN, FP = len(true_events) - TP, len(predicted_events) - TP
+    TN = max(len(timestamps) - (TP + FN + FP), 0)
     
     precision = TP / (TP + FP) * 100 if (TP + FP) > 0 else 0
     recall = TP / (TP + FN) * 100 if (TP + FN) > 0 else 0
     f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+    fall_accuracy = (TP + TN) / (TP + TN + FP + FN) * 100 if (TP + TN + FP + FN) > 0 else 0
     
-    return {'event_precision': precision, 'event_recall': recall, 'event_f1': f1, 'true_events': len(true_events), 'predicted_events': len(predicted_events)}
+    return {'event_precision': precision, 'event_recall': recall, 'event_f1': f1, 'fall_accuracy': fall_accuracy, 'true_events': len(true_events), 'predicted_events': len(predicted_events)}
 
 def test_all_parameters():
     """
@@ -115,16 +117,11 @@ def test_all_parameters():
                     params = {'n_estimators': n_estimator, 'max_depth': max_depth}
                     metrics = evaluate_cluster_based(X_train, X_test, y_train, y_test, params, timestamps)
                     all_results.append({'window_size': window_size, 'overlap': overlap, 'params': params, **metrics})
-                    print(f"Event-Level - Precision: {metrics['event_precision']:.2f}%, Recall: {metrics['event_recall']:.2f}%, F1-Score: {metrics['event_f1']:.2f}%")
+                    print(f"Event-Level - Precision: {metrics['event_precision']:.2f}%, Recall: {metrics['event_recall']:.2f}%, F1-Score: {metrics['event_f1']:.2f}%, Fall Accuracy: {metrics['fall_accuracy']:.2f}%")
             
             del processed_data, X, y, X_train, X_test, y_train, y_test, timestamps
             cp.get_default_memory_pool().free_all_blocks()
             gc.collect()
-    
-    best_result = max(all_results, key=lambda x: x['event_f1'])
-    print("\n=== BEST CONFIGURATION ===")
-    print(f"Window Size: {best_result['window_size']}, Overlap: {best_result['overlap']}%")
-    print(f"Event Precision: {best_result['event_precision']:.2f}%, Recall: {best_result['event_recall']:.2f}%, F1: {best_result['event_f1']:.2f}%")
     
     with open(os.path.join(result_dir, 'gridsearch_results.json'), 'w') as f:
         json.dump(all_results, f, indent=4)
