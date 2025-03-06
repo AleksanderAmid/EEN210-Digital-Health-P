@@ -87,7 +87,7 @@ else:
 X = processed_features
 
 # Load the pre-trained model (adjust path/filename as needed)
-model = load("AI_folder(RF)/Model_135_25_72.joblib")
+model = load("AI_folder(RF)/fall_detection_model.joblib")
 
 # Now split the dataset:
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
