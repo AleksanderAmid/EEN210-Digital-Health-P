@@ -78,8 +78,9 @@ if 'label' in raw_data.columns:
     labels = []
     for start in range(0, len(raw_data) - 135 + 1, 67):
         window = raw_data.iloc[start:start+135].reset_index(drop=True)
-        center_label = window['label'].iloc[len(window)//2]  # or use another aggregation method
-        labels.append(center_label)
+        center_label = window['label'].iloc[len(window)//2]
+        # Convert to binary: if center_label equals 5, then it's a fall (1), else no-fall (0)
+        labels.append(1 if center_label == 5 else 0)
     y = pd.Series(labels)
 else:
     raise ValueError("Label column not found in CSV.")
